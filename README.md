@@ -1,5 +1,7 @@
 # ParallelQueue
-python module to manage multiprocessing of a queue
+python module to manage multiprocessing of a queue.
+
+I've copied to have the similar functionality twice. Enough to encapsulate it in a module. Perhaps the name could be better.
 
 ## TODO:
 
