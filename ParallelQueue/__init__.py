@@ -22,3 +22,4 @@ __license__ = "GPLv3+"
 __status__ = "development"
 
 from .version import version, VERSION
+from .parallelqueue import ParallelQueue
