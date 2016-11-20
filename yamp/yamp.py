@@ -28,18 +28,18 @@ from multiprocessing import Event as _Event
 from multiprocessing import Lock as _Lock
 from multiprocessing import Process as _Process
 from multiprocessing import Queue as _Queue
-try:
-    import psutil as _psutil  # soft-dependency
-except:
-    _psutil = None
 from time import sleep as _sleep
 from threading import Thread as _Thread
+from traceback import print_exc as _print_exc
+
+from .loadaverage import LoadAverage as _LoadAverage
+from .memorypercent import MemoryPercent as _MemoryPercent
 
 
 _CHECKPERIOD = 60  # a minute
 
 
-class Pool(object):
+class Pool(_LoadAverage, _MemoryPercent):
     def __init__(self, target, arginLst, parallel=None):
         """
             Build an object with the capacity to execute multiple process with
@@ -67,24 +67,12 @@ class Pool(object):
             if parallel < 0:
                 parallel = maxParallelprocesses + parallel
         self._parallel = parallel
-        print("Will use %d cores" % (self._parallel))
+        print("%s\tDEBUG: Will use %d cores"
+              % (_current_process(), self._parallel))
         self._workersLst = []
         self.__prepareWorkers()
         self._monitorThread = _Thread(target=self.__monitor)
         self._monitorThread.setDaemon(True)
-        # prepare memory management ---
-        if _psutil is not None:
-            self._memoryPercentUsage = _psutil.virtual_memory().percent
-            print("%s\tInitial machine memory usage %f"
-                  % (_current_process(), self._memoryPercentUsage))
-        else:
-            self._memoryPercentUsage = None
-            print("%s\tMemory management will not be available"
-                  % (_current_process()))
-        self._memoryPercentWarning = 90.0
-        self._memoryPercentLimit = 100.0
-        self._memoryPause = _Event()
-        self._memoryPause.clear()
         # prepare the parallel objects ---
         self._checkPeriod = _CHECKPERIOD
         self._idx = 0
@@ -94,6 +82,7 @@ class Pool(object):
         self._queue = _Queue()
         for element in arginLst:
             self._queue.put(element)
+        print("%s\tDEBUG: input: %s" % (_current_process(), arginLst))
         self._output = _Queue()
         self._collectedOutput = []
 
@@ -135,74 +124,12 @@ class Pool(object):
 
     output = property(**output())
 
-    def memoryPercentUsage():
-        doc = """"""
-
-        def fget(self):
-            if _psutil is not None:
-                self._memoryPercentUsage = _psutil.virtual_memory().percent
-            else:
-                self._memoryPercentUsage = None
-            return self._memoryPercentUsage
-
-        return locals()
-
-    memoryPercentUsage = property(**memoryPercentUsage())
-
-    def memoryPercentWarning():
-        doc = """"""
-
-        def fget(self):
-            return self._memoryPercentWarning
-
-        def fset(self, value):
-            try:
-                if value is None:  # to establish no limit
-                    self._memoryPercentWarning = value
-                else:
-                    value = float(value)
-                    if 0 < value <= 100.0:
-                        self._memoryPercentWarning = value
-                    else:
-                        raise
-            except:
-                raise TypeError("a %r cannot be set as a memory percentage "
-                                "warning" % (value))
-
-        return locals()
-
-    memoryPercentWarning = property(**memoryPercentWarning())
-
-    def memoryPercentLimit():
-        doc = """"""
-
-        def fget(self):
-            return self._memoryPercentLimit
-
-        def fset(self, value):
-            try:
-                if value is None:  # to establish no limit
-                    self._memoryPercentLimit = value
-                else:
-                    value = float(value)
-                    if 0 < value <= 100.0:
-                        self._memoryPercentLimit = value
-                    else:
-                        raise
-            except:
-                raise TypeError("a %r cannot be set as a memory percentage "
-                                "limit" % (value))
-
-        return locals()
-
-    memoryPercentLimit = property(**memoryPercentLimit())
-
     def start(self):
-        print("%s\tStart()" % (_current_process()))
+        print("%s\tDEBUG: Start()" % (_current_process()))
         self._monitorThread.start()
 
     def stop(self):
-        print("%s\tStop()" % (_current_process()))
+        print("%s\tDEBUG: Stop()" % (_current_process()))
         self._joinerEvent.set()
 
     def isAlive(self):
@@ -212,7 +139,7 @@ class Pool(object):
         return self.isAlive()
 
     def isPaused(self):
-        return self._memoryPause.is_set()
+        return self._pauseDueToLoad.is_set() or self._pauseDueToMemory.is_set()
 
     def is_paused(self):
         return self.isPaused()
@@ -220,21 +147,22 @@ class Pool(object):
     def __prepareWorkers(self):
         for self._idx in range(self._parallel):
             self._workersLst.append(self.__buildWorker(self._idx))
-        print("%s\t%d workers prepared" % (_current_process(), self._idx))
+        print("%s\tDEBUG: %d workers prepared" % (_current_process(), self._idx))
 
     def __buildWorker(self, id):
         return _Process(target=self.__worker, name=str("%d" % (id)),
                         args=(id,))
 
     def __monitor(self):
-        print("%s\tMonitor begins" % (_current_process()))
+        print("%s\tDEBUG: Monitor begins" % (_current_process()))
         for worker in self._workersLst:
-            print("%s\tStart %s worker" % (_current_process(), worker))
+            print("%s\tDEBUG: Start %s worker" % (_current_process(), worker))
             worker.start()
         while not self.__procedureHasEnd():
             self.__reviewProcessesState()
             self.__collectOutputs()
-            self.__reviewMemory()
+            self._reviewLoadAverage()
+            self._reviewMemoryPercent()
             # TODO: review the load average of the machine
             _sleep(self._checkPeriod)
         self.__joinWorkers()
@@ -254,7 +182,7 @@ class Pool(object):
                 pass
             else:
                 deadWorker = workersLst.pop(idx)
-                print("%s\tWorker %s hasn't PID, replacing it\n"
+                print("%s\tWARNING: Worker %s hasn't PID, replacing it\n"
                       % (_current_process(), deadWorker.name))
                 self._idx += 1
                 newWorker = buildWorker(self._idx)
@@ -264,111 +192,52 @@ class Pool(object):
 
     def __collectOutputs(self):
         while not self._output.empty():
-            data = self._output.get()
-            print("%s\tcollect %d outputs: %s"
-                  % (_current_process(), len(data), data))
-            self._collectedOutput.append(data)
-
-    def __reviewMemory(self):
-        if _psutil is not None:
-            previous = self._memoryPercentUsage
-            if self.memoryPercentUsage >= self.memoryPercentLimit and\
-                    not self._memoryPause.is_set():
-                print("%s\tALERT: memory percentage use at %f pausing the "
-                      "processes" % (_current_process(),
-                                     self._memoryPercentUsage))
-                self._memoryPause.set()
-            elif self._memoryPause.is_set():
-                print("%s\tINFO: memory percentage use at %f, recovering "
-                      "from pause" % (_current_process(),
-                                      self._memoryPercentUsage))
-                self._memoryPause.clear()
-            elif self._memoryPercentUsage >= self.memoryPercentWarning:
-                if previous != self._memoryPercentUsage:
-                    print("%s\tWARNING: memory percentage use at %f"
-                          % (_current_process(), self._memoryPercentUsage))
-            else:
-                print("%s\tDEBUG: memory percentage use at %f"
-                      % (_current_process(), self._memoryPercentUsage))
+            collected = 0
+            while not self._output.empty():
+                data = self._output.get()
+                collected += 1
+                self._collectedOutput.append(data)
+            print("%s\tDEBUG: collect %d outputs"
+                  % (_current_process(), collected))
 
     def __joinWorkers(self):
         while len(self._workersLst) > 0:
-            print("%s\tjoin %d workers" % (_current_process(),
+            self.__collectOutputs()
+            print("%s\tINFO: join %d workers" % (_current_process(),
                                            len(self._workersLst)))
             for w in self._workersLst:
                 if not w.is_alive():
                     w.join(1)
                     self._workersLst.pop(self._workersLst.index(w))
-                    print("%s\t%s still alive" % (_current_process(), w))
+                    print("%s\tDEBUG: %s still alive"
+                          % (_current_process(), w))
             _sleep(self._checkPeriod)
             # TODO: do something with workers that never ends.
 
     def __worker(self, id):
-        print("%s\tWorker %d starts" % (_current_process(), id))
+        print("%s\tDEBUG: Worker %d starts" % (_current_process(), id))
         while not self.__procedureHasEnd():
             try:
-                if self._memoryPause.is_set():
-                    print("%s\tWorker %d paused due to memory overuse"
+                if self.isPaused():
+                    print("%s\tINFO: Worker %d paused"
                           % (_current_process(), id))
-                    while self._memoryPause.is_set():
+                    while self.isPaused():
                         _sleep(self._checkPeriod)  # FIXME: use a wait()
-                    print("%s\tWorker %d resume pause"
+                    print("%s\tINFO: Worker %d resume"
                           % (_current_process(), id))
                 else:
                     argin = self._queue.get()
-                    print("%s\tWorker %d in  %s"
+                    print("%s\tINFO: Worker %d in  %s"
                           % (_current_process(), id, argin))
                     argout = self._target(argin)
-                    print("%s\tWorker %d out %s"
+                    print("%s\tINFO: Worker %d out %s"
                           % (_current_process(), id, argout))
                     self._output.put((argin, argout))
-                    # TODO: hook with a method to be called, using a lock between
-                    #       those process with what ever the user likes to execute.
-                    #       For example store results in a file.
+                    # TODO: hook with a method to be called, using a lock
+                    #       between those process with what ever the user
+                    #       likes to execute. For example store results in a
+                    #       file.
             except Exception as e:
-                pass  # TODO: log it
-
-
-def cmdArgs(parser):
-    '''Include all the command line parameters to be accepted and used.
-    '''
-#     parser.add_option('', "--loglevel", type="str",
-#                       help="output prints log level: "
-#                            "{error,warning,info,debug,trace}.")
-    parser.add_option('', "--processors", type="str",
-                      help="Tell the application how many processors will be "
-                      "used. A positive number will establish the number of "
-                      "parallel workers and each will use one of the cores. "
-                      "With the string'max' the application will use all the "
-                      "available cores. Telling a negative number with be "
-                      "understood as how many below the maximum will be used.")
-    parser.add_option('', "--samples", type="int",
-                      help="How many elements will be set in the arginLst.")
-
-
-def tester(argin):
-    from random import randint
-    argout = argin**2
-    _sleep(randint(1, 5))
-    print("%s^2 = %s" % (argin, argout))
-    return argout
-
-
-def main():
-    from optparse import OptionParser
-    parser = OptionParser()
-    cmdArgs(parser)
-    (options, args) = parser.parse_args()
-    if options.samples is not None:
-        arginLst = range(options.samples)
-        obj = Pool(tester, arginLst, options.processors)
-        obj.checkPeriod = 1
-        obj.start()
-        while obj.isAlive():
-            _sleep(obj.checkPeriod)
-        print("results: %s" % (obj.output))
-    else:
-        print("\n\tNo default action, check help to know what can be done.\n")
-
-if __name__ == "__main__":
-    main()
+                print("%s\tERROR: Worker %d exception: %s"
+                      % (_current_process(), id, e))
+                _print_exc()

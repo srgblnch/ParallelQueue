@@ -23,7 +23,7 @@ __status__ = "development"
 
 _MAJOR_VERSION = 0
 _MIDDLE_VERSION = 0
-_MINOR_VERSION = 2
+_MINOR_VERSION = 3
 _BUILD_VERSION = 0
 
 
