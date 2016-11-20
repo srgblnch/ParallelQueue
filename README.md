@@ -4,6 +4,7 @@ Python module to manage multiprocessing of a queue. Quite similar to _multiproce
 
 I've needed and reproduced a similar functionality twice in a while and a third was coming the way. That's _enough_ to encapsulate it in a module. Perhaps the name could be better.
 
+
 ## TODO:
 
 - [ ] Use python Logging
@@ -14,6 +15,8 @@ I've needed and reproduced a similar functionality twice in a while and a third 
 - [ ] Hooks. At least, after the worker target execution allow to execute something, but with in a Lock because is a place to report results in a file (for example).
 - [ ] Python 2.7 and 3.5
 - [ ] Cythonize
+- [ ] Look on _pkg_resources_ to improve versioning.
+
 
 ## Usage:
 

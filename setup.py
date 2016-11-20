@@ -37,6 +37,10 @@ classifiers=['Development Status :: 2 - Pre-Alpha',
                    'Python Modules',
                    ''],
 
+requires = []
+
+recommended = {"psutil": "psutil>=4.4.2"}
+
 setup(name='yamp',
       license="GPLv3+",
       version=version(),
@@ -45,4 +49,6 @@ setup(name='yamp',
       classifiers=classifiers,
       packages=find_packages(),
       url="https://github.com/srgblnch/yamp",
+      install_requires = requires,
+      extras_require = recommended,
       )
