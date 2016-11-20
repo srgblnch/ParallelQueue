@@ -12,3 +12,38 @@ I've needed and reproduced a similar functionality twice in a while and a third 
 - [ ] Control memory usage (psutil)
 - [ ] Control machine load (psutil)
 - [ ] Hooks. At least, after the worker target execution allow to execute something, but with in a Lock because is a place to report results in a file (for example).
+
+## Usage:
+
+Get the sources as usual.
+
+```
+$ git clone git@github.com:srgblnch/yamp.git
+```
+
+Build them using the setup tools.
+
+```
+$ python setup.py build
+$ python setup.py install --prefix ~/usr
+```
+
+Use in a python interpreter
+
+```python
+>>> import yamp
+>>> yamp.version()
+    '0.0.1-0'
+>>> arginLst = range(20)
+>>> checkPeriod = 2
+>>> from random import randint
+>>> from time import sleep
+>>> def tester(argin):
+...:     argout = argin**2
+...:     sleep(randint(checkPeriod/2, checkPeriod*2))
+...:     return argout
+>>> obj = yamp.Pool(tester, arginLst)
+>>> obj.checkPeriod = checkPeriod
+>>> obj.start()
+```
+
