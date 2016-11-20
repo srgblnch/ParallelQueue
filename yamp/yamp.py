@@ -35,7 +35,7 @@ from threading import Thread as _Thread
 _CHECKPERIOD = 60  # a minute
 
 
-class ParallelQueue(object):
+class Pool(object):
     def __init__(self, target, arginLst, parallel=None):
         """
             Build an object with the capacity to execute multiple process with
@@ -240,7 +240,7 @@ def main():
     (options, args) = parser.parse_args()
     if options.samples is not None:
         arginLst = range(options.samples)
-        obj = ParallelQueue(tester, arginLst, options.processors)
+        obj = Pool(tester, arginLst, options.processors)
         obj.checkPeriod = 1
         obj.start()
         while obj.isAlive():
