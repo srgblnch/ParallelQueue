@@ -15,7 +15,7 @@ I've needed and reproduced a similar functionality twice in a while and a third 
 - [ ] Hooks. At least, after the worker target execution allow to execute something, but with in a Lock because is a place to report results in a file (for example).
 - [ ] Python 2.7 and 3.5
 - [ ] Cythonize
-- [ ] Look on _pkg_resources_ to improve versioning.
+- [ ] Look on *pkg_resources* to improve version numbering.
 
 
 ## Usage:
