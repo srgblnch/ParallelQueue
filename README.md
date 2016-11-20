@@ -1,4 +1,4 @@
-# ParallelQueue
+# Yet Another Multiprocessing Pool (yamp)
 
 Python module to manage multiprocessing of a queue. Quite similar to _multiprocessing.Pool_ but more to my liking.
 

@@ -21,7 +21,7 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
-from ParallelQueue import version
+from yamp import version
 from setuptools import setup, find_packages
 
 classifiers=['Development Status :: 2 - Pre-Alpha',
@@ -37,12 +37,12 @@ classifiers=['Development Status :: 2 - Pre-Alpha',
                    'Python Modules',
                    ''],
 
-setup(name='ParallelQueue',
+setup(name='yamp',
       license="GPLv3+",
       version=version(),
       author="Sergi Blanch-Torn\'e",
       author_email="srgblnchtrn@protonmail.ch",
       classifiers=classifiers,
       packages=find_packages(),
-      url="https://github.com/srgblnch/ParallelQueue",
+      url="https://github.com/srgblnch/yamp",
       )
