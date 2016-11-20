@@ -28,6 +28,10 @@ from multiprocessing import Event as _Event
 from multiprocessing import Lock as _Lock
 from multiprocessing import Process as _Process
 from multiprocessing import Queue as _Queue
+try:
+    import psutil as _psutil  # soft-dependency
+except:
+    _psutil = None
 from time import sleep as _sleep
 from threading import Thread as _Thread
 
@@ -67,6 +71,20 @@ class Pool(object):
         self._workersLst = []
         self.__prepareWorkers()
         self._monitorThread = _Thread(target=self.__monitor)
+        self._monitorThread.setDaemon(True)
+        # prepare memory management ---
+        if _psutil is not None:
+            self._memoryPercentUsage = _psutil.virtual_memory().percent
+            print("%s\tInitial machine memory usage %f"
+                  % (_current_process(), self._memoryPercentUsage))
+        else:
+            self._memoryPercentUsage = None
+            print("%s\tMemory management will not be available"
+                  % (_current_process()))
+        self._memoryPercentWarning = 90.0
+        self._memoryPercentLimit = 100.0
+        self._memoryPause = _Event()
+        self._memoryPause.clear()
         # prepare the parallel objects ---
         self._checkPeriod = _CHECKPERIOD
         self._idx = 0
@@ -117,6 +135,68 @@ class Pool(object):
 
     output = property(**output())
 
+    def memoryPercentUsage():
+        doc = """"""
+
+        def fget(self):
+            if _psutil is not None:
+                self._memoryPercentUsage = _psutil.virtual_memory().percent
+            else:
+                self._memoryPercentUsage = None
+            return self._memoryPercentUsage
+
+        return locals()
+
+    memoryPercentUsage = property(**memoryPercentUsage())
+
+    def memoryPercentWarning():
+        doc = """"""
+
+        def fget(self):
+            return self._memoryPercentWarning
+
+        def fset(self, value):
+            try:
+                if value is None:  # to establish no limit
+                    self._memoryPercentWarning = value
+                else:
+                    value = float(value)
+                    if 0 < value <= 100.0:
+                        self._memoryPercentWarning = value
+                    else:
+                        raise
+            except:
+                raise TypeError("a %r cannot be set as a memory percentage "
+                                "warning" % (value))
+
+        return locals()
+
+    memoryPercentWarning = property(**memoryPercentWarning())
+
+    def memoryPercentLimit():
+        doc = """"""
+
+        def fget(self):
+            return self._memoryPercentLimit
+
+        def fset(self, value):
+            try:
+                if value is None:  # to establish no limit
+                    self._memoryPercentLimit = value
+                else:
+                    value = float(value)
+                    if 0 < value <= 100.0:
+                        self._memoryPercentLimit = value
+                    else:
+                        raise
+            except:
+                raise TypeError("a %r cannot be set as a memory percentage "
+                                "limit" % (value))
+
+        return locals()
+
+    memoryPercentLimit = property(**memoryPercentLimit())
+
     def start(self):
         print("%s\tStart()" % (_current_process()))
         self._monitorThread.start()
@@ -127,6 +207,15 @@ class Pool(object):
 
     def isAlive(self):
         return self._monitorThread.isAlive()
+
+    def is_alive(self):
+        return self.isAlive()
+
+    def isPaused(self):
+        return self._memoryPause.is_set()
+
+    def is_paused(self):
+        return self.isPaused()
 
     def __prepareWorkers(self):
         for self._idx in range(self._parallel):
@@ -145,7 +234,8 @@ class Pool(object):
         while not self.__procedureHasEnd():
             self.__reviewProcessesState()
             self.__collectOutputs()
-            # TODO: review memory use of this process and the workers
+            self.__reviewMemory()
+            # TODO: review the load average of the machine
             _sleep(self._checkPeriod)
         self.__joinWorkers()
 
@@ -179,6 +269,28 @@ class Pool(object):
                   % (_current_process(), len(data), data))
             self._collectedOutput.append(data)
 
+    def __reviewMemory(self):
+        if _psutil is not None:
+            previous = self._memoryPercentUsage
+            if self.memoryPercentUsage >= self.memoryPercentLimit and\
+                    not self._memoryPause.is_set():
+                print("%s\tALERT: memory percentage use at %f pausing the "
+                      "processes" % (_current_process(),
+                                     self._memoryPercentUsage))
+                self._memoryPause.set()
+            elif self._memoryPause.is_set():
+                print("%s\tINFO: memory percentage use at %f, recovering "
+                      "from pause" % (_current_process(),
+                                      self._memoryPercentUsage))
+                self._memoryPause.clear()
+            elif self._memoryPercentUsage >= self.memoryPercentWarning:
+                if previous != self._memoryPercentUsage:
+                    print("%s\tWARNING: memory percentage use at %f"
+                          % (_current_process(), self._memoryPercentUsage))
+            else:
+                print("%s\tDEBUG: memory percentage use at %f"
+                      % (_current_process(), self._memoryPercentUsage))
+
     def __joinWorkers(self):
         while len(self._workersLst) > 0:
             print("%s\tjoin %d workers" % (_current_process(),
@@ -195,15 +307,24 @@ class Pool(object):
         print("%s\tWorker %d starts" % (_current_process(), id))
         while not self.__procedureHasEnd():
             try:
-                argin = self._queue.get()
-                print("%s\tWorker %d in  %s" % (_current_process(), id, argin))
-                argout = self._target(argin)
-                print("%s\tWorker %d out %s"
-                      % (_current_process(), id, argout))
-                self._output.put((argin, argout))
-                # TODO: hook with a method to be called, using a lock between
-                #       those process with what ever the user likes to execute.
-                #       For example store results in a file.
+                if self._memoryPause.is_set():
+                    print("%s\tWorker %d paused due to memory overuse"
+                          % (_current_process(), id))
+                    while self._memoryPause.is_set():
+                        _sleep(self._checkPeriod)  # FIXME: use a wait()
+                    print("%s\tWorker %d resume pause"
+                          % (_current_process(), id))
+                else:
+                    argin = self._queue.get()
+                    print("%s\tWorker %d in  %s"
+                          % (_current_process(), id, argin))
+                    argout = self._target(argin)
+                    print("%s\tWorker %d out %s"
+                          % (_current_process(), id, argout))
+                    self._output.put((argin, argout))
+                    # TODO: hook with a method to be called, using a lock between
+                    #       those process with what ever the user likes to execute.
+                    #       For example store results in a file.
             except Exception as e:
                 pass  # TODO: log it
 
