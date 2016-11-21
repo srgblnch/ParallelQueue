@@ -24,25 +24,28 @@ __status__ = "development"
 from yamp import version
 from setuptools import setup, find_packages
 
+license = ['GPLv3+',
+           'License :: OSI Approved :: '
+           'GNU General Public License v3 or later (GPLv3+)']
+
 classifiers=['Development Status :: 2 - Pre-Alpha',
-                   'Intended Audience :: Developers',
-                   'Intended Audience :: Information Technology',
-                   'Intended Audience :: Science/Research',
-                   'License :: OSI Approved :: '
-                   'GNU General Public License v3 or later (GPLv3+)',
-                   'Operating System :: POSIX',
-                   # 'Programming Language :: Cython',
-                   'Programming Language :: Python',
-                   'Topic :: Software Development :: Libraries :: '
-                   'Python Modules',
-                   ''],
+             'Intended Audience :: Developers',
+             'Intended Audience :: Information Technology',
+             'Intended Audience :: Science/Research',
+             license[1],
+             'Operating System :: POSIX',
+             # 'Programming Language :: Cython',
+             'Programming Language :: Python',
+             'Topic :: Software Development :: Libraries :: '
+             'Python Modules',
+             ''],
 
 requires = []
 
 recommended = {"psutil": "psutil>=4.4.2"}
 
 setup(name='yamp',
-      license="GPLv3+",
+      license=license[0],
       version=version(),
       author="Sergi Blanch-Torn\'e",
       author_email="srgblnchtrn@protonmail.ch",

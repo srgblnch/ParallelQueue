@@ -63,7 +63,9 @@ def main():
         obj.start()
         while obj.isAlive():
             sleep(obj.checkPeriod)
-        print("results: %s" % (obj.output))
+        res = obj.output
+        res.sort()
+        print("results: %s" % (res))
     else:
         print("\n\tNo default action, check help to know what can be done.\n")
 

@@ -7,14 +7,14 @@ I've needed and reproduced a similar functionality twice in a while and a third 
 
 ## TODO:
 
-- [ ] Use python Logging
-- [ ] Extend the ending condition
+- [ ] Use python Logging.
+- [ ] Extend the ending condition.
 - [ ] Improve the input: no need to be build before, but can be generated while needed.
-- [x] Control memory usage (psutil)
-- [x] Control machine load
+- [x] Control memory usage (psutil).
+- [x] Control machine load.
 - [ ] Hooks. At least, after the worker target execution allow to execute something, but with in a Lock because is a place to report results in a file (for example).
-- [ ] Python 2.7 and 3.5
-- [ ] Cythonize
+- [ ] Python 3.5 together with the current 2.7 support.
+- [ ] Cythonize.
 - [ ] Look on *pkg_resources* to improve version numbering.
 
 

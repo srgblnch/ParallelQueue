@@ -29,17 +29,15 @@ from multiprocessing import Lock as _Lock
 from multiprocessing import Process as _Process
 from multiprocessing import Queue as _Queue
 from time import sleep as _sleep
-from threading import Thread as _Thread
+
 from traceback import print_exc as _print_exc
 
 from .loadaverage import LoadAverage as _LoadAverage
 from .memorypercent import MemoryPercent as _MemoryPercent
+from .monitorthread import MonitorThread as _MonitorThread
 
 
-_CHECKPERIOD = 60  # a minute
-
-
-class Pool(_LoadAverage, _MemoryPercent):
+class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
     def __init__(self, target, arginLst, parallel=None):
         """
             Build an object with the capacity to execute multiple process with
@@ -71,13 +69,11 @@ class Pool(_LoadAverage, _MemoryPercent):
               % (_current_process(), self._parallel))
         self._workersLst = []
         self.__prepareWorkers()
-        self._monitorThread = _Thread(target=self.__monitor)
-        self._monitorThread.setDaemon(True)
+        self.__prepareMonitor()
         # prepare the parallel objects ---
-        self._checkPeriod = _CHECKPERIOD
+        
         self._idx = 0
-        self._joinerEvent = _Event()
-        self._joinerEvent.clear()
+        
         # self._locker = _Lock()  # TODO: for the logging
         self._queue = _Queue()
         for element in arginLst:
@@ -95,24 +91,6 @@ class Pool(_LoadAverage, _MemoryPercent):
         return locals()
 
     activeWorkers = property(**activeWorkers())
-
-    def checkPeriod():
-        doc = """Period, in seconds that the monitor thread will check the
-                 parallel processes."""
-
-        def fget(self):
-            return self._checkPeriod
-
-        def fset(self, value):
-            try:
-                self._checkPeriod = int(value)
-            except:
-                raise TypeError("a %r cannot be set as a check period"
-                                % (type(value)))
-
-        return locals()
-
-    checkPeriod = property(**checkPeriod())
 
     def output():
         doc = """"""
@@ -149,31 +127,18 @@ class Pool(_LoadAverage, _MemoryPercent):
             self._workersLst.append(self.__buildWorker(self._idx))
         print("%s\tDEBUG: %d workers prepared" % (_current_process(), self._idx))
 
-    def __buildWorker(self, id):
-        return _Process(target=self.__worker, name=str("%d" % (id)),
-                        args=(id,))
+    def __prepareMonitor(self):
+        self._addMonitorMethod(self._reviewProcessesState)
+        self._addMonitorMethod(self._collectOutputs)
+        self._addMonitorMethod(self._reviewLoadAverage)
+        self._addMonitorMethod(self._reviewMemoryPercent)
 
-    def __monitor(self):
-        print("%s\tDEBUG: Monitor begins" % (_current_process()))
-        for worker in self._workersLst:
-            print("%s\tDEBUG: Start %s worker" % (_current_process(), worker))
-            worker.start()
-        while not self.__procedureHasEnd():
-            self.__reviewProcessesState()
-            self.__collectOutputs()
-            self._reviewLoadAverage()
-            self._reviewMemoryPercent()
-            # TODO: review the load average of the machine
-            _sleep(self._checkPeriod)
-        self.__joinWorkers()
-
-    def __procedureHasEnd(self):
-        # TODO: extend
-        if self._joinerEvent.is_set():
+    def _procedureHasEnd(self):
+        if _MonitorThread._procedureHasEnd(self):
             return True
         return self._queue.empty()
 
-    def __reviewProcessesState(self):
+    def _reviewProcessesState(self):
         pidsLst = [w.pid for w in self._workersLst]
         while not all([True if pid is not None else False for pid in pidsLst]):
             try:
@@ -190,7 +155,7 @@ class Pool(_LoadAverage, _MemoryPercent):
                 newWorker.start()
                 deadWorker.join()
 
-    def __collectOutputs(self):
+    def _collectOutputs(self):
         while not self._output.empty():
             collected = 0
             while not self._output.empty():
@@ -200,9 +165,13 @@ class Pool(_LoadAverage, _MemoryPercent):
             print("%s\tDEBUG: collect %d outputs"
                   % (_current_process(), collected))
 
-    def __joinWorkers(self):
+    def __buildWorker(self, id):
+        return _Process(target=self.__worker, name=str("%d" % (id)),
+                        args=(id,))
+
+    def _joinWorkers(self):
         while len(self._workersLst) > 0:
-            self.__collectOutputs()
+            self._collectOutputs()
             print("%s\tINFO: join %d workers" % (_current_process(),
                                            len(self._workersLst)))
             for w in self._workersLst:
@@ -216,7 +185,7 @@ class Pool(_LoadAverage, _MemoryPercent):
 
     def __worker(self, id):
         print("%s\tDEBUG: Worker %d starts" % (_current_process(), id))
-        while not self.__procedureHasEnd():
+        while not self._procedureHasEnd():
             try:
                 if self.isPaused():
                     print("%s\tINFO: Worker %d paused"
