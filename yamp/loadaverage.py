@@ -25,8 +25,10 @@ from os import getloadavg as _getloadavg
 from multiprocessing import current_process as _current_process
 from multiprocessing import Event as _Event
 
+from .logger import Logger as _Logger
 
-class LoadAverage(object):
+
+class LoadAverage(_Logger):
     def __init__(self):
         super(LoadAverage, self).__init__()
         self._loadAverage = [None, None, None]
@@ -100,20 +102,18 @@ class LoadAverage(object):
         previous = self._loadAverage
         if self.__compare(self.loadAverage, self.loadAverageLimit)\
                 and not self._pauseDueToLoad.is_set():
-            print("%s\tALERT: load average %s pausing the processes"
-                  % (_current_process(), self._loadAverage))
+            self.critical("load average %s pausing the processes"
+                          % (str(self._loadAverage)))
             self._pauseDueToLoad.set()
         elif self._pauseDueToLoad.is_set():
-            print("%s\tINFO: load average %s, resuming from pause"
-                  % (_current_process(), self._loadAverage))
+            self.info("load average %s, resuming from pause"
+                      % (str(self._loadAverage)))
             self._pauseDueToLoad.clear()
         elif self.__compare(self._loadAverage, self.loadAverageWarning):
             if self.__compare(self._loadAverage, previous):
-                print("%s\tWARNING: load average %s"
-                      % (_current_process(), self._loadAverage))
+                self.warning("load average %s" % (str(self._loadAverage)))
         else:
-            print("%s\tDEBUG: load average %s"
-                  % (_current_process(), self._loadAverage))
+            self.debug("load average %s" % (str(self._loadAverage)))
 
     def __compare(self, test, reference):
         booleans = []

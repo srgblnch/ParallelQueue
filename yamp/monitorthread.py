@@ -26,19 +26,31 @@ from multiprocessing import Event as _Event
 from threading import Thread as _Thread
 from time import sleep as _sleep
 
+from .logger import Logger as _Logger
 
 _CHECKPERIOD = 60  # a minute
 
 
-class MonitorThread(object):
+class MonitorThread(_Logger):
     def __init__(self):
         super(MonitorThread, self).__init__()
         self._monitorThread = _Thread(target=self.__monitor)
         self._monitorThread.setDaemon(True)
         self._joinerEvent = _Event()
         self._joinerEvent.clear()
+        self._workersLst = []
         self._monitorMethods = []
         self._checkPeriod = _CHECKPERIOD
+
+    def activeWorkers():
+        doc = """"""
+
+        def fget(self):
+            return len(self._workersLst)
+
+        return locals()
+
+    activeWorkers = property(**activeWorkers())
 
     def checkPeriod():
         doc = """Period, in seconds that the monitor thread will check the
@@ -59,9 +71,9 @@ class MonitorThread(object):
     checkPeriod = property(**checkPeriod())
 
     def __monitor(self):
-        print("%s\tDEBUG: Monitor begins" % (_current_process()))
+        self.debug("Monitor begins")
         for worker in self._workersLst:
-            print("%s\tDEBUG: Start %s worker" % (_current_process(), worker))
+            self.debug("Start %s worker" % (worker.name))
             worker.start()
         while not self._procedureHasEnd():
             for method in self._monitorMethods:

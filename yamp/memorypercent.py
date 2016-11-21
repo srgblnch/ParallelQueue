@@ -28,18 +28,19 @@ try:
 except:
     _psutil = None
 
+from .logger import Logger as _Logger
 
-class MemoryPercent(object):
+
+class MemoryPercent(_Logger):
     def __init__(self):
         super(MemoryPercent, self).__init__()
         if _psutil is not None:
             self._memoryPercentUsage = _psutil.virtual_memory().percent
-            print("%s\tDEBUG: Initial machine memory usage %f"
-                  % (_current_process(), self._memoryPercentUsage))
+            self.debug("Initial machine memory usage %f"
+                       % (self._memoryPercentUsage))
         else:
             self._memoryPercentUsage = None
-            print("%s\tDEBUG: Memory management will not be available"
-                  % (_current_process()))
+            self.debug("Memory management will not be available")
         self._memoryPercentWarning = None
         self._memoryPercentLimit = None
         self._pauseDueToMemory = _Event()
@@ -114,20 +115,18 @@ class MemoryPercent(object):
         if self.memoryPercentLimit is not None and\
                 self.memoryPercentUsage >= self.memoryPercentLimit and\
                 not self._pauseDueToMemory.is_set():
-            print("%s\tALERT: memory percentage use at %f pausing the "
-                  "processes" % (_current_process(),
-                                 self._memoryPercentUsage))
+            self.critical("Memory percentage use at %f pausing the "
+                          "processes" % (self._memoryPercentUsage))
             self._pauseDueToMemory.set()
         elif self._pauseDueToMemory.is_set():
-            print("%s\tINFO: memory percentage use at %f, recovering "
-                  "from pause" % (_current_process(),
-                                  self._memoryPercentUsage))
+            self.info("Memory percentage use at %f, recovering "
+                      "from pause" % (self._memoryPercentUsage))
             self._pauseDueToMemory.clear()
         elif self.memoryPercentWarning is not None and\
                 self._memoryPercentUsage >= self.memoryPercentWarning:
             if previous != self._memoryPercentUsage:
-                print("%s\tWARNING: memory percentage use at %f"
-                      % (_current_process(), self._memoryPercentUsage))
+                self.warning("Memory percentage use at %f"
+                             % (self._memoryPercentUsage))
         else:
-            print("%s\tDEBUG: memory percentage use at %f"
-                  % (_current_process(), self._memoryPercentUsage))
+            self.debug("Memory percentage use at %f"
+                       % (self._memoryPercentUsage))

@@ -7,7 +7,7 @@ I've needed and reproduced a similar functionality twice in a while and a third 
 
 ## TODO:
 
-- [ ] Use python Logging.
+- [x] Use python Logging.
 - [ ] Extend the ending condition.
 - [ ] Improve the input: no need to be build before, but can be generated while needed.
 - [x] Control memory usage (psutil).
@@ -38,7 +38,7 @@ Use in a python interpreter
 ```python
 >>> import yamp
 >>> yamp.version()
-    '0.0.2-0'
+    '0.0.4-0'
 >>> arginLst = range(20)
 >>> checkPeriod = 2
 >>> from random import randint
