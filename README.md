@@ -16,6 +16,8 @@ I've needed and reproduced a similar functionality twice in a while and a third 
 - [ ] Python 3.5 together with the current 2.7 support.
 - [ ] Cythonize.
 - [ ] Look on *pkg_resources* to improve version numbering.
+- [ ] When enter in _pause_ mode, use _psutil_ to suspend the workers until conditions recovers and the work can be resumed (then resume the workers).
+  - [ ] This many enter in a loop of _suspend-resume_. Raise the bell to reduce the number of parallel workers.
 
 
 ## Usage:
