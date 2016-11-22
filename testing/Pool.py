@@ -59,6 +59,7 @@ def main():
     if options.samples is not None:
         arginLst = range(options.samples)
         obj = Pool(tester, arginLst, options.processors)
+        obj.log2file = True
         obj.checkPeriod = 1
         obj.start()
         while obj.isAlive():
