@@ -91,3 +91,6 @@ ENV/
 # eclipse
 .project
 .pydevproject
+
+# temporal edition files
+*~
