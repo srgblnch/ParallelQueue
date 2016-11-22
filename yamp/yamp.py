@@ -56,7 +56,54 @@ class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
         """
         super(self.__class__, self).__init__()
         # prepare the parameters ---
-        self._target = target
+        self.__target = target
+        self.__parallel = None
+        self.__lastWorkerId = None
+        self.__input = _Queue()
+        self.__output = _Queue()
+        self.__collected = []
+        # self._locker = _Lock()  # TODO: for the logging
+        # setup ---
+        self.__prepareParallel(parallel)
+        self.__prepareInputQueue(arginLst)
+        self.__prepareWorkers()
+        self.__prepareMonitoring()
+
+    # Interface ---
+
+    def start(self):
+        self.debug("Start()")
+        _MonitorThread.start(self)
+
+    def stop(self):
+        self.debug("Stop()")
+        _MonitorThread.stop(self)
+
+    def isAlive(self):
+        return _MonitorThread.isAlive(self)
+
+    def is_alive(self):
+        return self.isAlive()
+
+    def isPaused(self):
+        return _LoadAverage.isPaused(self) or _MemoryPercent.isPaused(self)
+
+    def is_paused(self):
+        return self.isPaused()
+
+    def output():
+        doc = """"""
+
+        def fget(self):
+            return self.__collected
+
+        return locals()
+
+    output = property(**output())
+
+    # internal characteristics ---
+
+    def __prepareParallel(self, parallel):
         maxParallelprocesses = _cpu_count()
         if parallel is None or parallel == 'max':
             parallel = maxParallelprocesses
@@ -64,109 +111,27 @@ class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
             parallel = int(parallel)
             if parallel < 0:
                 parallel = maxParallelprocesses + parallel
-        self._parallel = parallel
-        self.debug("Will use %d cores" % (self._parallel))
-        self.__prepareWorkers()
-        self.__prepareMonitor()
-        # prepare the parallel objects ---
-        
-        self._idx = 0
-        
-        # self._locker = _Lock()  # TODO: for the logging
-        self._queue = _Queue()
-        for element in arginLst:
-            self._queue.put(element)
-        self.debug("input: %s" % (arginLst))
-        self._output = _Queue()
-        self._collectedOutput = []
+        self.__parallel = parallel
+        self.debug("Will use %d cores" % (self.__parallel))
 
-    def output():
-        doc = """"""
-
-        def fget(self):
-            return self._collectedOutput
-
-        return locals()
-
-    output = property(**output())
-
-    def start(self):
-        self.debug("Start()")
-        self._monitorThread.start()
-
-    def stop(self):
-        self.debug("Stop()")
-        self._joinerEvent.set()
-
-    def isAlive(self):
-        return self._monitorThread.isAlive()
-
-    def is_alive(self):
-        return self.isAlive()
-
-    def isPaused(self):
-        return self._pauseDueToLoad.is_set() or self._pauseDueToMemory.is_set()
-
-    def is_paused(self):
-        return self.isPaused()
+    def __prepareInputQueue(self, lst):
+        for element in lst:
+            self.__input.put(element)
+        self.debug("input: %s" % (lst))
 
     def __prepareWorkers(self):
-        for self._idx in range(self._parallel):
-            self._workersLst.append(self.__buildWorker(self._idx))
-        self.debug("%d workers prepared" % (self._idx))
-
-    def __prepareMonitor(self):
-        self._addMonitorMethod(self._reviewProcessesState)
-        self._addMonitorMethod(self._collectOutputs)
-        self._addMonitorMethod(self._reviewLoadAverage)
-        self._addMonitorMethod(self._reviewMemoryPercent)
-
-    def _procedureHasEnd(self):
-        if _MonitorThread._procedureHasEnd(self):
-            return True
-        return self._queue.empty()
-
-    def _reviewProcessesState(self):
-        pidsLst = [w.pid for w in self._workersLst]
-        while not all([True if pid is not None else False for pid in pidsLst]):
-            try:
-                idx = pidsLst.index(None)
-            except:
-                pass
-            else:
-                deadWorker = workersLst.pop(idx)
-                self.warning("Worker %s hasn't PID, replacing it\n"
-                             % (deadWorker.name))
-                self._idx += 1
-                newWorker = buildWorker(self._idx)
-                workersLst.append(newWorker)
-                newWorker.start()
-                deadWorker.join()
-
-    def _collectOutputs(self):
-        while not self._output.empty():
-            collected = 0
-            while not self._output.empty():
-                data = self._output.get()
-                collected += 1
-                self._collectedOutput.append(data)
-            self.debug("collect %d outputs" % (collected))
+        if self.__lastWorkerId is None:
+            workerIds = range(self.__parallel)
+        else:
+            workerIds = range(self.__lastWorkerId, self.__parallel)
+        for self.__lastWorkerId in workerIds:
+            newWorker = self.__buildWorker(self.__lastWorkerId)
+            self._appendWorker(newWorker)
+        self.debug("%d workers prepared" % (self.activeWorkers))
 
     def __buildWorker(self, id):
         return _Process(target=self.__worker, name=str("%d" % (id)),
                         args=(id,))
-
-    def _joinWorkers(self):
-        while len(self._workersLst) > 0:
-            self._collectOutputs()
-            self.info("join %d workers" % (len(self._workersLst)))
-            for w in self._workersLst:
-                if not w.is_alive():
-                    w.join(1)
-                    self._workersLst.pop(self._workersLst.index(w))
-                    self.debug("%s still alive" % (w))
-            _sleep(self._checkPeriod)
-            # TODO: do something with workers that never ends.
 
     def __worker(self, id):
         self.debug("Worker %d starts" % (id))
@@ -175,14 +140,14 @@ class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
                 if self.isPaused():
                     self.info("Worker %d paused" % (id))
                     while self.isPaused():
-                        _sleep(self._checkPeriod)  # FIXME: use a wait()
+                        _sleep(self.checkPeriod)  # FIXME: use a wait()
                     self.info("Worker %d resume" % (id))
                 else:
-                    argin = self._queue.get()
+                    argin = self.__input.get()
                     self.info("Worker %d in  %s" % (id, argin))
-                    argout = self._target(argin)
+                    argout = self.__target(argin)
                     self.info("Worker %d out %s" % (id, argout))
-                    self._output.put((argin, argout))
+                    self.__output.put((argin, argout))
                     # TODO: hook with a method to be called, using a lock
                     #       between those process with what ever the user
                     #       likes to execute. For example store results in a
@@ -190,3 +155,40 @@ class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
             except Exception as e:
                 self.error("Worker %d exception: %s" % (id, e))
                 _print_exc()
+
+    def _procedureHasEnd(self):
+        if _MonitorThread._procedureHasEnd(self):
+            return True
+        return self.__input.empty()
+
+    def __prepareMonitoring(self):
+        self._addMonitorMethod(self._reviewProcessesState)
+        self._addMonitorMethod(self._collectOutputs)
+        self._addMonitorMethod(self._reviewLoadAverage)
+        self._addMonitorMethod(self._reviewMemoryPercent)
+
+    def _reviewProcessesState(self):
+        pidsLst = self.workerPIDs
+        while not all([True if pid is not None else False for pid in pidsLst]):
+            try:
+                idx = pidsLst.index(None)
+            except:
+                pass
+            else:
+                deadWorker = self._popWorker(idx)
+                self.warning("Worker %s hasn't PID, replacing it\n"
+                             % (deadWorker.name))
+                self.__lastWorkerId += 1
+                newWorker = buildWorker(self.__lastWorkerId)
+                self._appendWorker(newWorker)
+                newWorker.start()
+                deadWorker.join()
+
+    def _collectOutputs(self):
+        while not self.__output.empty():
+            collected = 0
+            while not self.__output.empty():
+                data = self.__output.get()
+                collected += 1
+                self.__collected.append(data)
+            self.debug("collect %d outputs" % (collected))

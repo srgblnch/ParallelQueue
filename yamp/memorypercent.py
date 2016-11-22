@@ -35,26 +35,26 @@ class MemoryPercent(_Logger):
     def __init__(self):
         super(MemoryPercent, self).__init__()
         if _psutil is not None:
-            self._memoryPercentUsage = _psutil.virtual_memory().percent
+            self.__memoryPercentUsage = _psutil.virtual_memory().percent
             self.debug("Initial machine memory usage %f"
-                       % (self._memoryPercentUsage))
+                       % (self.__memoryPercentUsage))
         else:
-            self._memoryPercentUsage = None
+            self.__memoryPercentUsage = None
             self.debug("Memory management will not be available")
-        self._memoryPercentWarning = None
-        self._memoryPercentLimit = None
-        self._pauseDueToMemory = _Event()
-        self._pauseDueToMemory.clear()
+        self.__memoryPercentWarning = None
+        self.__memoryPercentLimit = None
+        self.__pauseDueToMemory = _Event()
+        self.__pauseDueToMemory.clear()
 
     def memoryPercentUsage():
         doc = """"""
 
         def fget(self):
             if _psutil is not None:
-                self._memoryPercentUsage = _psutil.virtual_memory().percent
+                self.__memoryPercentUsage = _psutil.virtual_memory().percent
             else:
-                self._memoryPercentUsage = None
-            return self._memoryPercentUsage
+                self.__memoryPercentUsage = None
+            return self.__memoryPercentUsage
 
         return locals()
 
@@ -64,16 +64,16 @@ class MemoryPercent(_Logger):
         doc = """"""
 
         def fget(self):
-            return self._memoryPercentWarning
+            return self.__memoryPercentWarning
 
         def fset(self, value):
             try:
                 if value is None:  # to establish no limit
-                    self._memoryPercentWarning = value
+                    self.__memoryPercentWarning = value
                 else:
                     value = float(value)
                     if 0 < value <= 100.0:
-                        self._memoryPercentWarning = value
+                        self.__memoryPercentWarning = value
                     else:
                         raise
             except:
@@ -88,16 +88,16 @@ class MemoryPercent(_Logger):
         doc = """"""
 
         def fget(self):
-            return self._memoryPercentLimit
+            return self.__memoryPercentLimit
 
         def fset(self, value):
             try:
                 if value is None:  # to establish no limit
-                    self._memoryPercentLimit = value
+                    self.__memoryPercentLimit = value
                 else:
                     value = float(value)
                     if 0 < value <= 100.0:
-                        self._memoryPercentLimit = value
+                        self.__memoryPercentLimit = value
                     else:
                         raise
             except:
@@ -108,25 +108,28 @@ class MemoryPercent(_Logger):
 
     memoryPercentLimit = property(**memoryPercentLimit())
 
+    def isPaused(self):
+        return self.__pauseDueToMemory.is_set()
+
     def _reviewMemoryPercent(self):
         if _psutil is None:
             return
-        previous = self._memoryPercentUsage
+        previous = self.__memoryPercentUsage
         if self.memoryPercentLimit is not None and\
                 self.memoryPercentUsage >= self.memoryPercentLimit and\
-                not self._pauseDueToMemory.is_set():
+                not self.__pauseDueToMemory.is_set():
             self.critical("Memory percentage use at %f pausing the "
-                          "processes" % (self._memoryPercentUsage))
-            self._pauseDueToMemory.set()
-        elif self._pauseDueToMemory.is_set():
+                          "processes" % (self.__memoryPercentUsage))
+            self.__pauseDueToMemory.set()
+        elif self.__pauseDueToMemory.is_set():
             self.info("Memory percentage use at %f, recovering "
-                      "from pause" % (self._memoryPercentUsage))
-            self._pauseDueToMemory.clear()
+                      "from pause" % (self.__memoryPercentUsage))
+            self.__pauseDueToMemory.clear()
         elif self.memoryPercentWarning is not None and\
-                self._memoryPercentUsage >= self.memoryPercentWarning:
-            if previous != self._memoryPercentUsage:
+                self.__memoryPercentUsage >= self.memoryPercentWarning:
+            if previous != self.__memoryPercentUsage:
                 self.warning("Memory percentage use at %f"
-                             % (self._memoryPercentUsage))
+                             % (self.__memoryPercentUsage))
         else:
             self.debug("Memory percentage use at %f"
-                       % (self._memoryPercentUsage))
+                       % (self.__memoryPercentUsage))

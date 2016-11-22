@@ -28,17 +28,17 @@ license = ['GPLv3+',
            'License :: OSI Approved :: '
            'GNU General Public License v3 or later (GPLv3+)']
 
-classifiers=['Development Status :: 2 - Pre-Alpha',
-             'Intended Audience :: Developers',
-             'Intended Audience :: Information Technology',
-             'Intended Audience :: Science/Research',
-             license[1],
-             'Operating System :: POSIX',
-             # 'Programming Language :: Cython',
-             'Programming Language :: Python',
-             'Topic :: Software Development :: Libraries :: '
-             'Python Modules',
-             ''],
+classifiers = ['Development Status :: 2 - Pre-Alpha',
+               'Intended Audience :: Developers',
+               'Intended Audience :: Information Technology',
+               'Intended Audience :: Science/Research',
+               license[1],
+               'Operating System :: POSIX',
+               # 'Programming Language :: Cython',
+               'Programming Language :: Python',
+               'Topic :: Software Development :: Libraries :: '
+               'Python Modules',
+               ''],
 
 requires = []
 
@@ -52,6 +52,6 @@ setup(name='yamp',
       classifiers=classifiers,
       packages=find_packages(),
       url="https://github.com/srgblnch/yamp",
-      install_requires = requires,
-      extras_require = recommended,
+      install_requires=requires,
+      extras_require=recommended,
       )

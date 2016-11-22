@@ -59,22 +59,105 @@ class Logger(object):
         self.__logging_folder = None
         self.__logging_file = None
         # setup the object ---
-        self.loggingFile()
-        self._devlogger = _logging.getLogger(self.__loggerName)
-        self._handler = None
-        if not len(self._devlogger.handlers):
-            self._devlogger.setLevel(_logging.DEBUG)
-            self._handler = \
-                _logging.handlers.RotatingFileHandler(self.__logging_file,
-                                                     maxBytes=10000000,
-                                                     backupCount=5)
-            self._handler.setLevel(_logging.NOTSET)
+        self.__devlogger = _logging.getLogger(self.__loggerName)
+        self.__handler = None
+        self.__prepareHandler()
+
+    def logMessage(self, msg, level):
+        _tag = self._levelStr[level]
+        prt_msg = "%8s - %s - %s - %s" % (_tag, self.__loggerName,
+                                          _current_process().name, msg)
+        if self.__log2file:
+            method = {self.CRITICAL: self.__devlogger.critical,
+                      self.ERROR: self.__devlogger.error,
+                      self.WARNING: self.__devlogger.warn,
+                      self.INFO: self.__devlogger.info,
+                      self.DEBUG: self.__devlogger.debug}
+            method[level](msg)
+        if self.__debugFlag and level >= self.__debuglevel:
+            with lock:
+                when = str(_datetime.now())
+                print("%s - %s" % (when, prt_msg))
+
+    def critical(self, msg):
+        self.logMessage(msg, self.CRITICAL)
+
+    def error(self, msg):
+        self.logMessage(msg, self.ERROR)
+
+    def warning(self, msg):
+        self.logMessage(msg, self.WARNING)
+
+    def info(self, msg):
+        self.logMessage(msg, self.INFO)
+
+    def debug(self, msg):
+        self.logMessage(msg, self.DEBUG)
+
+    def loggingFolder():
+        doc = """"""
+
+        def fget(self):
+            if self.__logging_folder is None:
+                logging_folder = "/var/log/%s" % (self.__loggerName)
+                if not self.__buildLoggingFolder(logging_folder):
+                    logging_folder = "/tmp/log/%s" % (self.__loggerName)
+                    if not self.__buildLoggingFolder(logging_folder):
+                        raise SystemError("No folder for logging available")
+                self.__logging_folder = logging_folder
+            else:
+                if not self.__buildLoggingFolder(self.__logging_folder):
+                    raise SystemError("No folder for logging available")
+            return self.__logging_folder
+
+        # FIXME: how to modify this folder destination once the handler exist
+#         def fset(self, folder):
+#             if self.__buildLoggingFolder(folder):
+#                 self.__logging_folder = folder
+#                 self.__prepareHandler()
+#             else:
+#                 raise SystemError("Invalid folder destination, "
+#                                   "using previous")
+
+        return locals()
+
+    loggingFolder = property(**loggingFolder())
+
+    def loggingFile():
+        doc = """"""
+
+        def fget(self):
+            if self.__logging_file is None:
+                self.__logging_file = \
+                    "%s/%s.log" % (self.loggingFolder, self.__loggerName)
+            return self.__logging_file
+
+        return locals()
+
+    loggingFile = property(**loggingFile())
+
+    def __buildLoggingFolder(self, folder):
+        try:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            return True
+        except:
+            return False
+
+    def __prepareHandler(self):
+        if not len(self.__devlogger.handlers):
+            self.__devlogger.setLevel(_logging.DEBUG)
+            self.__handler = \
+                _logging.handlers.RotatingFileHandler(self.loggingFile,
+                                                      maxBytes=10000000,
+                                                      backupCount=5)
+            self.__handler.setLevel(_logging.NOTSET)
             formatter = _logging.Formatter('%(asctime)s - %(levelname)s - '
-                                          '%(name)s - %(message)s')
-            self._handler.setFormatter(formatter)
-            self._devlogger.addHandler(self._handler)
+                                           '%(name)s - %(message)s')
+            self.__handler.setFormatter(formatter)
+            self.__devlogger.addHandler(self.__handler)
         else:
-            self._handler = self._devlogger.handlers[0]
+            self.__handler = self.__devlogger.handlers[0]
 
     def logEnable():
         doc = """"""
@@ -101,9 +184,9 @@ class Logger(object):
             if type(value) not in [int, long]:
                 raise AssertionError("The value must be integer")
             self.__debuglevel = level
-            self._devlogger.setLevel(level)
-            if self._handler is not None:
-                self._handler.setLevel(level)
+            self.__devlogger.setLevel(level)
+            if self.__handler is not None:
+                self.__handler.setLevel(level)
 
         return locals()
 
@@ -123,61 +206,3 @@ class Logger(object):
         return locals()
 
     log2file = property(**log2file())
-
-    def logMessage(self, msg, level):
-        _tag = self._levelStr[level]
-        prt_msg = "%s - %s - %s - %s" % (_tag, self.__loggerName,
-                                         _current_process().name, msg)
-        if self.__log2file:
-            method = {self.CRITICAL: self._devlogger.critical,
-                      self.ERROR: self._devlogger.error,
-                      self.WARNING: self._devlogger.warn,
-                      self.INFO: self._devlogger.info,
-                      self.DEBUG: self._devlogger.debug}
-            method[level](msg)
-        if self.__debugFlag and level >= self.__debuglevel:
-            with lock:
-                when = str(_datetime.now())
-                print("%s %s" % (when, prt_msg))
-
-    def critical(self, msg):
-        self.logMessage(msg, self.CRITICAL)
-
-    def error(self, msg):
-        self.logMessage(msg, self.ERROR)
-
-    def warning(self, msg):
-        self.logMessage(msg, self.WARNING)
-
-    def info(self, msg):
-        self.logMessage(msg, self.INFO)
-
-    def debug(self, msg):
-        self.logMessage(msg, self.DEBUG)
-
-    def loggingFolder(self):
-        if self.__logging_folder is None:
-            logging_folder = "/var/log/%s" % (self.__loggerName)
-            if not self.__buildLoggingFolder(logging_folder):
-                logging_folder = "/tmp/log/%s" % (self.__loggerName)
-                if not self.__buildLoggingFolder(logging_folder):
-                    raise SystemError("No folder for logging available")
-            self.__logging_folder = logging_folder
-        else:
-            if not self.__buildLoggingFolder(self.__logging_folder):
-                raise SystemError("No folder for logging available")
-        return self.__logging_folder
-
-    def loggingFile(self):
-        if self.__logging_file is None:
-            self.__logging_file = \
-                "%s/%s.log" % (self.loggingFolder(), self.__loggerName)
-        return self.__logging_file
-
-    def __buildLoggingFolder(self, folder):
-        try:
-            if not os.path.exists(folder):
-                os.makedirs(folder)
-            return True
-        except:
-            return False
