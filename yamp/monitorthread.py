@@ -23,6 +23,10 @@ __status__ = "development"
 
 from multiprocessing import current_process as _current_process
 from multiprocessing import Event as _Event
+try:
+    import psutil as _psutil  # soft-dependency
+except:
+    _psutil = None
 from threading import Thread as _Thread
 from time import sleep as _sleep
 
@@ -39,6 +43,7 @@ class MonitorThread(_Logger):
         self.__joinerEvent = _Event()
         self.__joinerEvent.clear()
         self.__workersLst = []
+        self.__workersPaused = False
         self.__monitorMethods = []
         self.__checkPeriod = _CHECKPERIOD
 
@@ -50,6 +55,9 @@ class MonitorThread(_Logger):
 
     def isAlive(self):
         return self.__monitorThread.isAlive()
+
+    def isPaused(self):
+        return self.__workersPaused
 
     def activeWorkers():
         doc = """"""
@@ -127,3 +135,29 @@ class MonitorThread(_Logger):
                     self.debug("Worker %s still alive" % (w.name))
             _sleep(self.__checkPeriod)
             # TODO: do something with workers that never ends.
+
+    def _pauseWorkers(self):
+        if _psutil is None:
+            self.warning("PAUSE Operation cannot be made with out psutil")
+            return
+        if self.__workersPaused:
+            self.warning("Workers are already paused")
+            return
+        for workerPID in self.workerPIDs:
+            worker = _psutil.Process(workerPID)
+            worker.suspend()
+            self.debug("PAUSED process %d" % (workerPID))
+        self.__workersPaused = True
+
+    def _resumeWorkers(self):
+        if _psutil is None:
+            self.warning("RESUME Operation cannot be made with out psutil")
+            return
+        if not self.__workersPaused:
+            self.warning("Workers are not paused")
+            return
+        for workerPID in self.workerPIDs:
+            worker = _psutil.Process(workerPID)
+            worker.resume()
+            self.debug("RESUMED process %d" % (workerPID))
+        self.__workersPaused = False

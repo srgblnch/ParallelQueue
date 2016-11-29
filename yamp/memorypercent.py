@@ -121,15 +121,18 @@ class MemoryPercent(_Logger):
             self.critical("Memory percentage use at %f pausing the "
                           "processes" % (self.__memoryPercentUsage))
             self.__pauseDueToMemory.set()
+            self._pauseWorkers()
         elif self.__pauseDueToMemory.is_set():
             self.info("Memory percentage use at %f, recovering "
                       "from pause" % (self.__memoryPercentUsage))
             self.__pauseDueToMemory.clear()
+            self._resumeWorkers()
         elif self.memoryPercentWarning is not None and\
                 self.__memoryPercentUsage >= self.memoryPercentWarning:
             if previous != self.__memoryPercentUsage:
                 self.warning("Memory percentage use at %f"
                              % (self.__memoryPercentUsage))
         else:
-            self.debug("Memory percentage use at %f"
-                       % (self.__memoryPercentUsage))
+            pass
+            # self.debug("Memory percentage use at %f"
+            #            % (self.__memoryPercentUsage))

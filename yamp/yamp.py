@@ -60,6 +60,7 @@ class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
         self.__parallel = None
         self.__lastWorkerId = None
         self.__input = _Queue()
+        self.__inputNelements = 0
         self.__output = _Queue()
         self.__collected = []
         # self._locker = _Lock()  # TODO: for the logging
@@ -86,7 +87,9 @@ class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
         return self.isAlive()
 
     def isPaused(self):
-        return _LoadAverage.isPaused(self) or _MemoryPercent.isPaused(self)
+        return _LoadAverage.isPaused(self) or \
+            _MemoryPercent.isPaused(self) or \
+            _MonitorThread.isPaused(self)
 
     def is_paused(self):
         return self.isPaused()
@@ -100,6 +103,19 @@ class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
         return locals()
 
     output = property(**output())
+
+    def progress():
+        doc = """"""
+
+        def fget(self):
+            nCollected = len(self.__collected)
+            self.debug("%d collected elements from %d inputs"
+                       % (nCollected, self.__inputNelements))
+            return float(nCollected)/self.__inputNelements
+
+        return locals()
+
+    progress = property(**progress())
 
     # internal characteristics ---
 
@@ -117,7 +133,8 @@ class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
     def __prepareInputQueue(self, lst):
         for element in lst:
             self.__input.put(element)
-        self.debug("input: %s" % (lst))
+        self.__inputNelements = len(lst)
+        self.debug("input: %s (%d)" % (lst, self.__inputNelements))
 
     def __prepareWorkers(self):
         if self.__lastWorkerId is None:
@@ -155,6 +172,12 @@ class Pool(_LoadAverage, _MemoryPercent, _MonitorThread):
             except Exception as e:
                 self.error("Worker %d exception: %s" % (id, e))
                 _print_exc()
+
+    def _pauseWorkers(self):
+        _MonitorThread._pauseWorkers(self)
+
+    def _resumeWorkers(self):
+        _MonitorThread._resumeWorkers(self)
 
     def _procedureHasEnd(self):
         if _MonitorThread._procedureHasEnd(self):

@@ -18,6 +18,7 @@ I've needed and reproduced a similar functionality twice in a while and a third 
 - [ ] Look on *pkg_resources* to improve version numbering.
 - [ ] When enter in _pause_ mode, use _psutil_ to suspend the workers until conditions recovers and the work can be resumed (then resume the workers).
   - [ ] This many enter in a loop of _suspend-resume_. Raise the bell to reduce the number of parallel workers.
+  - [ ] In the warning sections of memory use and machine load, those workers can be _reniced_ to reduce their priority.
 
 
 ## Usage:
@@ -49,8 +50,15 @@ Use in a python interpreter
 ...:     argout = argin**2
 ...:     sleep(randint(checkPeriod/2, checkPeriod*2))
 ...:     return argout
->>> obj = yamp.Pool(tester, arginLst)
->>> obj.checkPeriod = checkPeriod
->>> obj.start()
+>>> pool = yamp.Pool(tester, arginLst)
+>>> pool.checkPeriod = checkPeriod
+>>> pool.start()
+```
+
+The control of the *main thread* will be returned and it can be checked the progress for the procedure:
+
+```python
+>>> pool.progress
+0.407407
 ```
 

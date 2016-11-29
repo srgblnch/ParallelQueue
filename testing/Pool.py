@@ -22,7 +22,7 @@ __license__ = "GPLv3+"
 __status__ = "development"
 
 
-from yamp import Pool
+from yamp import Pool, version
 from time import sleep
 
 
@@ -51,26 +51,47 @@ def tester(argin):
     return argout
 
 
+def pauseTest(pool, pauseLoops):
+    if pauseLoops >= 5:
+        if pool.isPaused():
+            print("resume...")
+            pool._resumeWorkers()
+        return pauseLoops
+    elif pauseLoops <= 5 and ( 0.3 < pool.progress < 0.7 ):
+        if pauseLoops == 0:
+            print("pause")
+        pool._pauseWorkers()
+        print("wait... (%d)" % (pauseLoops))
+        sleep(pool.checkPeriod)
+        return pauseLoops+1
+    return pauseLoops
+
+
 def main():
     from optparse import OptionParser
     parser = OptionParser()
     cmdArgs(parser)
     (options, args) = parser.parse_args()
+    print("\n\tUsing yamp-%s\n" % (version()))
     if options.samples is not None:
         arginLst = range(options.samples)
-        obj = Pool(tester, arginLst, options.processors)
-#         obj.loggingFolder = '.'
-#         print obj.loggingFile()
-        obj.log2file = True
-        obj.checkPeriod = 1
-        obj.start()
-        while obj.isAlive():
-            sleep(obj.checkPeriod)
-        res = obj.output
+        pool = Pool(tester, arginLst, options.processors)
+#         pool.loggingFolder = '.'
+#         print pool.loggingFile()
+        pool.log2file = True
+        pool.checkPeriod = 1
+        pool.start()
+        pauseLoops = 0
+        while pool.isAlive():
+            sleep(pool.checkPeriod)
+            print("progress: %f (%s)" % (pool.progress, pool.isAlive()))
+            pauseLoops = pauseTest(pool, pauseLoops)
+        print("finish: %f (%s)" % (pool.progress, pool.isAlive()))
+        res = pool.output
         res.sort()
         print("results: %s" % (res))
     else:
-        print("\n\tNo default action, check help to know what can be done.\n")
+        print("\tNo default action, check help to know what can be done.\n")
 
 if __name__ == "__main__":
     main()
