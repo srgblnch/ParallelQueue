@@ -101,25 +101,24 @@ class LoadAverage(_Logger):
     def isPaused(self):
         return self.__pauseDueToLoad.is_set()
 
-    def _reviewLoadAverage(self):
+    def reviewLoadAverage(self):
         previous = self.__loadAverage
         if self.__compare(self.loadAverage, self.loadAverageLimit)\
                 and not self.__pauseDueToLoad.is_set():
             self.critical("load average %s pausing the processes"
                           % (str(self.__loadAverage)))
             self.__pauseDueToLoad.set()
-            self._pauseWorkers()
+            #self._pauseWorkers()
         elif self.__pauseDueToLoad.is_set():
             self.info("load average %s, resuming from pause"
                       % (str(self.__loadAverage)))
             self.__pauseDueToLoad.clear()
-            self._resumeWorkers()
+            #self._resumeWorkers()
         elif self.__compare(self.__loadAverage, self.loadAverageWarning):
             if self.__compare(self.__loadAverage, previous):
                 self.warning("load average %s" % (str(self.__loadAverage)))
         else:
-            pass
-            # self.debug("load average %s" % (str(self.__loadAverage)))
+            self.debug("load average %s" % (str(self.__loadAverage)))
 
     def __compare(self, test, reference):
         booleans = []

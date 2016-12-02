@@ -28,6 +28,7 @@ from multiprocessing import Queue as _Queue
 from threading import current_thread as _current_thread
 from threading import Thread as _Thread
 
+from .loadaverage import LoadAverage as _LoadAverage
 from .logger import Logger as _Logger
 from .worker import Worker as _Worker
 
@@ -64,6 +65,7 @@ class Pool(_Logger):
         self.__poolMonitor = _Thread(target=self.__poolMonitorThread)
         self.__poolMonitor.setDaemon(True)
         self.__collected = []
+        self.__loadAverage = _LoadAverage(*args, **kwargs)
         # structures for the child processes
         self.__startProcess = _Event()
         self.__stepProcess = _Event()
@@ -96,6 +98,7 @@ class Pool(_Logger):
     def pause(self):
         self.__resumeProcess.clear()
         self.__eventSet(self.__pauseProcess, "Pause")
+        self.info("PAUSE has been requested to the Pool")
 
     def isPaused(self):
         return self.__pauseProcess.is_set()
@@ -109,9 +112,11 @@ class Pool(_Logger):
             return
         self.__pauseProcess.clear()
         self.__eventSet(self.__resumeProcess, "Resume")
+        self.info("RESUME has been requested to the Pool")
 
     def stop(self):
         self.__eventSet(self.__stopProcess, "Stop")
+        self.info("STOP has been requested to the Pool")
 
     def isAlive(self):
         return self.__startProcess.is_set() and not self.__stopProcess.is_set()
@@ -230,8 +235,10 @@ class Pool(_Logger):
             # FIXME: msg to be removed, together with the timeout
         while not self.__stopProcess.is_set():
             self.__stepProcess.wait()
+            self.__stepProcess.clear()
             self.__collectOutputs()
             self.__reviewWorkers()
+            self.__loadAverage.reviewLoadAverage()
 
     def __collectOutputs(self):
         while not self.__output.empty():

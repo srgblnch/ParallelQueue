@@ -183,7 +183,7 @@ class Worker(_Logger):
             # FIXME: msg to be removed, together with the timeout
         self.info("Start to work: creating the fork")
         self.__worker.start()
-        self.__workerMonitoring()
+        self.__processMonitoring()
 
     def __processMonitoring(self):
         self.debug("Start monitoring")
@@ -212,10 +212,12 @@ class Worker(_Logger):
             self.warning("Without psutil pause will be when the process "
                          "finish its current task.")
         else:
+            self.debug("psutil.Process(%d).suspend()" % (self.__worker.pid))
             _psutil.Process(self.__worker.pid).suspend()
 
     def __doResume(self):
         if _psutil is not None:
+            self.debug("psutil.Process(%d).resume()" % (self.__worker.pid))
             _psutil.Process(self.__worker.pid).resume()
 
     def __doJoin(self):
