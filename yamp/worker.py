@@ -77,7 +77,7 @@ class Worker(_Logger):
         self.checkPeriod = checkPeriod
         # Events ---
         self.__startProcess = startProcessEvent or _Event()
-        self.__stepProcessEvent = stepProcessEvent or _Event()
+        self.__stepProcess = stepProcessEvent or _Event()
         self.__pauseProcess = pauseProcessEvent or _Event()
         self.__resumeProcess = resumeProcessEvent or _Event()
         self.__stopProcess = stopProcessEvent or _Event()
@@ -96,7 +96,7 @@ class Worker(_Logger):
         self.__monitor = _Thread(target=self.__thread)
         self.__monitor.setDaemon(True)
         self.__monitor.start()
-        self.__process = _Process(target=self.__procedure)
+        self.__worker = _Process(target=self.__procedure)
 
     def __str__(self):
         return "%s()" % (self.name)
@@ -152,7 +152,7 @@ class Worker(_Logger):
         # TODO: those condition must be reviewed.
 
     def __isProcessAlive(self):
-        return self.__process.is_alive()
+        return self.__worker.is_alive()
 
     def __checkDeadProcess(self):
         if not self.__isProcessAlive():
@@ -161,8 +161,8 @@ class Worker(_Logger):
                 return
             self.critical("process has died and it shouldn't!")
             self.__input.put(self.__currentArgin)
-            self.__process = _Process(target=self.__procedure)
-            self.__process.start()
+            self.__worker = _Process(target=self.__procedure)
+            self.__worker.start()
 
     # TODO: progress feature
 
@@ -182,8 +182,8 @@ class Worker(_Logger):
             self.debug("Waiting to start" % self.__id)
             # FIXME: msg to be removed, together with the timeout
         self.info("Start to work: creating the fork")
-        self.__process.start()
-        self.__processMonitoring()
+        self.__worker.start()
+        self.__workerMonitoring()
 
     def __processMonitoring(self):
         self.debug("Start monitoring")
@@ -212,22 +212,22 @@ class Worker(_Logger):
             self.warning("Without psutil pause will be when the process "
                          "finish its current task.")
         else:
-            _psutil.Process(self.__process.pid).suspend()
+            _psutil.Process(self.__worker.pid).suspend()
 
     def __doResume(self):
         if _psutil is not None:
-            _psutil.Process(self.__process.pid).resume()
+            _psutil.Process(self.__worker.pid).resume()
 
     def __doJoin(self):
         tries = 0
-        while self.__process.is_alive():
-            self.__process.join(self.__checkPeriod)
-            if self.__process.is_alive():
+        while self.__worker.is_alive():
+            self.__worker.join(self.__checkPeriod)
+            if self.__worker.is_alive():
                 tries += 1
                 self.warning("Worker didn't join (try %d)" % (tries))
                 if tries > _MAXJOINTRIES and _psutil is not None:
                     self.error("Worker hasn't finishing, terminating")
-                    _psutil.Process(self.__process.pid).terminate()
+                    _psutil.Process(self.__worker.pid).terminate()
         self.info("Worker %d joined" % (self.__id))
 
     def __procedure(self):
@@ -262,7 +262,7 @@ class Worker(_Logger):
                         self.__postHook(self.__currentArgin,
                                         self.__currentArgout,
                                         **self.__postExtraArgs)
-                    self.__stepProcessEvent.set()
+                    self.__stepProcess.set()
             except Exception as e:
                 self.error("exception: %s" % (e))
                 _print_exc()
@@ -374,7 +374,7 @@ class Worker(_Logger):
         doc = """Process ID of the worker's child process"""
 
         def fget(self):
-            return self.__process.pid
+            return self.__worker.pid
 
         return locals()
 
