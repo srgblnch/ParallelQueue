@@ -23,3 +23,4 @@ __status__ = "development"
 
 from .version import version, VERSION
 from .yamp import Pool
+from .worker import Worker

@@ -26,6 +26,7 @@ import logging as _logging
 from logging import handlers as _handlers
 from multiprocessing import current_process as _current_process
 from multiprocessing import Lock as _Lock
+from threading import current_thread as _current_thread
 import os
 
 
@@ -65,8 +66,9 @@ class Logger(object):
 
     def logMessage(self, msg, level):
         _tag = self._levelStr[level]
-        prt_msg = "%8s - %s - %s - %s" % (_tag, self.__loggerName,
-                                          _current_process().name, msg)
+        prt_msg = "%8s - %s - %s - %s - %s" % (_tag, self.__loggerName,
+                                               _current_process().name,
+                                               _current_thread().name, msg)
         if self.__log2file:
             method = {self.CRITICAL: self.__devlogger.critical,
                       self.ERROR: self.__devlogger.error,

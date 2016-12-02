@@ -54,14 +54,14 @@ def tester(argin):
 def pauseTest(pool, pauseLoops):
     if pauseLoops >= 5:
         if pool.isPaused():
-            print("resume...")
-            pool._resumeWorkers()
+            print("\n\tresume...\n")
+            pool.resume()
         return pauseLoops
-    elif pauseLoops <= 5 and ( 0.3 < pool.progress < 0.7 ):
+    elif pauseLoops <= 5 and (0.3 < pool.progress < 0.7):
         if pauseLoops == 0:
-            print("pause")
-        pool._pauseWorkers()
-        print("wait... (%d)" % (pauseLoops))
+            print("\n\tpause\n")
+            pool.pause()
+        print("\n\twait... (%d)\n" % (pauseLoops))
         sleep(pool.checkPeriod)
         return pauseLoops+1
     return pauseLoops
@@ -83,13 +83,12 @@ def main():
         pool.start()
         pauseLoops = 0
         while pool.isAlive():
-            sleep(pool.checkPeriod)
-            print("progress: %f (%s)" % (pool.progress, pool.isAlive()))
+            sleep(1)
+            print("\n\tprogress: %.2f%%\n" % ((pool.progress)*100))
             pauseLoops = pauseTest(pool, pauseLoops)
-        print("finish: %f (%s)" % (pool.progress, pool.isAlive()))
         res = pool.output
         res.sort()
-        print("results: %s" % (res))
+        print("\n\tresults: %s\n" % (res))
     else:
         print("\tNo default action, check help to know what can be done.\n")
 
