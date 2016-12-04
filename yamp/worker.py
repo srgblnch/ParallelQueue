@@ -157,7 +157,7 @@ class Worker(_Logger):
         """Monitor thread function."""
         _current_thread().name = "Monitor%d" % (self.__id)
         while not self.__events.waitStart(self.__checkPeriod):
-            self.debug("Waiting to start" % self.__id)
+            self.debug("Waiting to start")
             # FIXME: msg to be removed, together with the timeout
         self.info("Start to work: creating the fork")
         self.__worker.start()

@@ -25,6 +25,7 @@ __status__ = "development"
 from .events import EventManager as _EventManager
 from .loadaverage import LoadAverage as _LoadAverage
 from .logger import Logger as _Logger
+from .memorypercent import MemoryPercent as _MemoryPercent
 from multiprocessing import cpu_count as _cpu_count
 from multiprocessing import Event as _Event
 from multiprocessing import Queue as _Queue
@@ -66,6 +67,7 @@ class Pool(_Logger):
         self.__poolMonitor.setDaemon(True)
         self.__collected = []
         self.__loadAverage = _LoadAverage(*args, **kwargs)
+        self.__memoryPercent = _MemoryPercent(*args, **kwargs)
         self.__events = _EventManager()
         # hooks ---
         self.__preHook = preHook
@@ -178,12 +180,14 @@ class Pool(_Logger):
         self.debug("%d workers prepared" % (self.activeWorkers))
 
     def __buildWorker(self, id):
-        return _Worker(id, self.__target, self.__input, self.__output,
-                       checkPeriod=self.checkPeriod,
-                       preHook=self.__preHook,
-                       preExtraArgs=self.__preExtraArgs,
-                       postHook=self.__postHook,
-                       postExtraArgs=self.__postExtraArgs,)
+        worker = _Worker(id, self.__target, self.__input, self.__output,
+                         checkPeriod=self.checkPeriod,
+                         preHook=self.__preHook,
+                         preExtraArgs=self.__preExtraArgs,
+                         postHook=self.__postHook,
+                         postExtraArgs=self.__postExtraArgs,)
+        self.debug("Worker%d build" % (id))
+        return worker
 
     def __appendWorker(self, worker):
         self.__workersLst.append(worker)
@@ -198,12 +202,14 @@ class Pool(_Logger):
             # FIXME: msg to be removed, together with the timeout
         while not self.__events.isStopped():
             if self.__events.waitStep(self.checkPeriod):
+                self.__events.stepClean()
                 self.debug("STEP event received")
                 self.__collectOutputs()
             else:
                 self.debug("Periodic check")
             self.__reviewWorkers()
-            self.__loadAverage.reviewLoadAverage()
+            self.__loadAverage.review()
+            self.__memoryPercent.review()
 
     def __collectOutputs(self):
         while not self.__output.empty():

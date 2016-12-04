@@ -21,17 +21,14 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
-from multiprocessing import current_process as _current_process
-from multiprocessing import Event as _Event
+from .conditioncheck import ConditionCheck as _ConditionCheck
 try:
     import psutil as _psutil  # soft-dependency
 except:
     _psutil = None
 
-from .logger import Logger as _Logger
 
-
-class MemoryPercent(_Logger):
+class MemoryPercent(_ConditionCheck):
     def __init__(self):
         super(MemoryPercent, self).__init__()
         if _psutil is not None:
@@ -43,96 +40,67 @@ class MemoryPercent(_Logger):
             self.debug("Memory management will not be available")
         self.__memoryPercentWarning = None
         self.__memoryPercentLimit = None
-        self.__pauseDueToMemory = _Event()
-        self.__pauseDueToMemory.clear()
 
-    def memoryPercentUsage():
-        doc = """"""
+    def __getValue(self):
+        if _psutil is not None:
+            self.__memoryPercentUsage = _psutil.virtual_memory().percent
+        else:
+            self.__memoryPercentUsage = None
+        return self.__memoryPercentUsage
 
-        def fget(self):
-            if _psutil is not None:
-                self.__memoryPercentUsage = _psutil.virtual_memory().percent
+    def __getWarning(self):
+        return self.__memoryPercentWarning
+
+    def __setWarning(self, value):
+        try:
+            if value is None:  # to establish no limit
+                self.__memoryPercentWarning = value
             else:
-                self.__memoryPercentUsage = None
-            return self.__memoryPercentUsage
-
-        return locals()
-
-    memoryPercentUsage = property(**memoryPercentUsage())
-
-    def memoryPercentWarning():
-        doc = """"""
-
-        def fget(self):
-            return self.__memoryPercentWarning
-
-        def fset(self, value):
-            try:
-                if value is None:  # to establish no limit
+                value = float(value)
+                if 0 < value <= 100.0:
                     self.__memoryPercentWarning = value
                 else:
-                    value = float(value)
-                    if 0 < value <= 100.0:
-                        self.__memoryPercentWarning = value
-                    else:
-                        raise
-            except:
-                raise TypeError("a %r cannot be set as a memory percentage "
-                                "warning" % (value))
+                    raise
+        except:
+            raise TypeError("a %r cannot be set as a memory percentage "
+                            "warning" % (value))
 
-        return locals()
+    def __getLimit(self):
+        return self.__memoryPercentLimit
 
-    memoryPercentWarning = property(**memoryPercentWarning())
-
-    def memoryPercentLimit():
-        doc = """"""
-
-        def fget(self):
-            return self.__memoryPercentLimit
-
-        def fset(self, value):
-            try:
-                if value is None:  # to establish no limit
+    def __setLimit(self, value):
+        try:
+            if value is None:  # to establish no limit
+                self.__memoryPercentLimit = value
+            else:
+                value = float(value)
+                if 0 < value <= 100.0:
                     self.__memoryPercentLimit = value
                 else:
-                    value = float(value)
-                    if 0 < value <= 100.0:
-                        self.__memoryPercentLimit = value
-                    else:
-                        raise
-            except:
-                raise TypeError("a %r cannot be set as a memory percentage "
-                                "limit" % (value))
+                    raise
+        except:
+            raise TypeError("a %r cannot be set as a memory percentage "
+                            "limit" % (value))
 
-        return locals()
-
-    memoryPercentLimit = property(**memoryPercentLimit())
-
-    def isPaused(self):
-        return self.__pauseDueToMemory.is_set()
-
-    def _reviewMemoryPercent(self):
+    def review(self):
         if _psutil is None:
             return
         previous = self.__memoryPercentUsage
-        if self.memoryPercentLimit is not None and\
-                self.memoryPercentUsage >= self.memoryPercentLimit and\
-                not self.__pauseDueToMemory.is_set():
+        if self.__getLimit() is not None and\
+                self.__getValue() >= self.__getLimit() and\
+                not self._IBookPause():
             self.critical("Memory percentage use at %f pausing the "
                           "processes" % (self.__memoryPercentUsage))
-            self.__pauseDueToMemory.set()
-            self._pauseWorkers()
-        elif self.__pauseDueToMemory.is_set():
+            self._bookPause()
+        elif self._IBookPause():
             self.info("Memory percentage use at %f, recovering "
                       "from pause" % (self.__memoryPercentUsage))
-            self.__pauseDueToMemory.clear()
-            self._resumeWorkers()
-        elif self.memoryPercentWarning is not None and\
-                self.__memoryPercentUsage >= self.memoryPercentWarning:
+            self._resume()
+        elif self.__getWarning() is not None and\
+                self.__memoryPercentUsage >= self__getWarning():
             if previous != self.__memoryPercentUsage:
                 self.warning("Memory percentage use at %f"
                              % (self.__memoryPercentUsage))
         else:
-            pass
-            # self.debug("Memory percentage use at %f"
-            #            % (self.__memoryPercentUsage))
+            self.debug("Memory percentage use at %f"
+                       % (self.__memoryPercentUsage))

@@ -55,7 +55,10 @@ class EventManager(_Singleton):
         # FIXME: this shall only be emitted by Workers
         self.__stepEvent.set()
         self.debug("STEP event emitted")
+    
+    def stepClean(self):
         self.__stepEvent.clear()
+        self.debug("STEP event catch")
 
     def pause(self, book=False):
         """

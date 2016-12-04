@@ -21,100 +21,67 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
+from .conditioncheck import ConditionCheck as _ConditionCheck
 from os import getloadavg as _getloadavg
-from multiprocessing import current_process as _current_process
-from multiprocessing import Event as _Event
-
-from .logger import Logger as _Logger
 
 
-class LoadAverage(_Logger):
+class LoadAverage(_ConditionCheck):
     def __init__(self):
         super(LoadAverage, self).__init__()
         self.__loadAverage = [None, None, None]
         self.__loadAverageWarning = [None, None, None]
         self.__loadAverageLimit = [None, None, None]
-        self.__pauseDueToLoad = _Event()
-        self.__pauseDueToLoad.clear()
 
-    def loadAverage():
-        doc = """"""
+    def __getValue(self):
+        self.__loadAverage = _getloadavg()
+        return self.__loadAverage
 
-        def fget(self):
-            self.__loadAverage = _getloadavg()
-            return self.__loadAverage
+    def __getWarning(self):
+        return self.__loadAverageWarning
 
-        return locals()
+    def __setWarning(self, value):
+        try:
+            if type(value) is list and len(value) == 3:
+                lst = []
+                for v in value:
+                    if v is None:
+                        lst.append(v)
+                    else:
+                        lst.append(float(v))
+                self.__loadAverageWarning = lst
+        except:
+            raise TypeError("a %r cannot be set as a load average warning"
+                            % (value))
 
-    loadAverage = property(**loadAverage())
+    def __getLimit(self):
+        return self.__loadAverageLimit
 
-    def loadAverageWarning():
-        doc = """Triplet of float values that will report a warning when at
-                 least one has been overcome."""
+    def __setLimit(self, value):
+        try:
+            if type(value) is list and len(value) == 3:
+                lst = []
+                for v in value:
+                    if v is None:
+                        lst.append(v)
+                    else:
+                        lst.append(float(v))
+                self.__loadAverageLimit = lst
+        except:
+            raise TypeError("a %r cannot be set as a load average warning"
+                            % (value))
 
-        def fget(self):
-            return self.__loadAverageWarning
-
-        def fset(self, value):
-            try:
-                if type(value) is list and len(value) == 3:
-                    lst = []
-                    for v in value:
-                        if v is None:
-                            lst.append(v)
-                        else:
-                            lst.append(float(v))
-                    self.__loadAverageWarning = lst
-            except:
-                raise TypeError("a %r cannot be set as a load average warning"
-                                % (value))
-
-        return locals()
-
-    loadAverageWarning = property(**loadAverageWarning())
-
-    def loadAverageLimit():
-        doc = """Triplet of float values that will report a warning when at
-                 least one has been overcome."""
-
-        def fget(self):
-            return self.__loadAverageLimit
-
-        def fset(self, value):
-            try:
-                if type(value) is list and len(value) == 3:
-                    lst = []
-                    for v in value:
-                        if v is None:
-                            lst.append(v)
-                        else:
-                            lst.append(float(v))
-                    self.__loadAverageLimit = lst
-            except:
-                raise TypeError("a %r cannot be set as a load average warning"
-                                % (value))
-
-        return locals()
-
-    loadAverageLimit = property(**loadAverageLimit())
-
-    def isPaused(self):
-        return self.__pauseDueToLoad.is_set()
-
-    def reviewLoadAverage(self):
+    def review(self):
         previous = self.__loadAverage
-        if self.__compare(self.loadAverage, self.loadAverageLimit)\
-                and not self.__pauseDueToLoad.is_set():
+        if self.__compare(self.__getValue(), self.__getLimit())\
+                and not self._IBookPause():
             self.critical("load average %s pausing the processes"
                           % (str(self.__loadAverage)))
-            self.__pauseDueToLoad.set()
-            #self._pauseWorkers()
-        elif self.__pauseDueToLoad.is_set():
+            self._bookPause()
+        elif self._IBookPause():
             self.info("load average %s, resuming from pause"
                       % (str(self.__loadAverage)))
-            self.__pauseDueToLoad.clear()
-            #self._resumeWorkers()
-        elif self.__compare(self.__loadAverage, self.loadAverageWarning):
+            self._resume()
+        elif self.__compare(self.__getValue(), self.__getWarning()):
             if self.__compare(self.__loadAverage, previous):
                 self.warning("load average %s" % (str(self.__loadAverage)))
         else:
