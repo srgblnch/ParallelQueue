@@ -22,14 +22,14 @@ __license__ = "GPLv3+"
 __status__ = "development"
 
 
+from .events import EventManager as _EventManager
+from .loadaverage import LoadAverage as _LoadAverage
+from .logger import Logger as _Logger
 from multiprocessing import cpu_count as _cpu_count
 from multiprocessing import Event as _Event
 from multiprocessing import Queue as _Queue
 from threading import current_thread as _current_thread
 from threading import Thread as _Thread
-
-from .loadaverage import LoadAverage as _LoadAverage
-from .logger import Logger as _Logger
 from .worker import Worker as _Worker
 
 
@@ -66,12 +66,7 @@ class Pool(_Logger):
         self.__poolMonitor.setDaemon(True)
         self.__collected = []
         self.__loadAverage = _LoadAverage(*args, **kwargs)
-        # structures for the child processes
-        self.__startProcess = _Event()
-        self.__stepProcess = _Event()
-        self.__pauseProcess = _Event()
-        self.__resumeProcess = _Event()
-        self.__stopProcess = _Event()
+        self.__events = _EventManager()
         # hooks ---
         self.__preHook = preHook
         self.__preExtraArgs = preExtraArgs
@@ -85,68 +80,53 @@ class Pool(_Logger):
 
     # Interface ---
 
-    def __eventSet(self, event, cmd):
-        if event.is_set():
-            self.warning("Cannot %s when it was already" % (cmd))
-            return
-        self.debug("%s()" % (cmd))
-        event.set()
-
     def start(self):
-        self.__eventSet(self.__startProcess, "Start")
+        self.__events.start()
 
     def pause(self):
-        self.__resumeProcess.clear()
-        self.__eventSet(self.__pauseProcess, "Pause")
         self.info("PAUSE has been requested to the Pool")
+        self.__events.pause()
 
     def isPaused(self):
-        return self.__pauseProcess.is_set()
+        return self.__events.isPaused()
 
     def is_paused(self):
         return self.isPaused()
 
     def resume(self):
-        if not self.__pauseProcess.is_set():
-            self.warning("Nothing to be resumed if not paused")
-            return
-        self.__pauseProcess.clear()
-        self.__eventSet(self.__resumeProcess, "Resume")
         self.info("RESUME has been requested to the Pool")
+        self.__events.resume()
 
     def stop(self):
-        self.__eventSet(self.__stopProcess, "Stop")
         self.info("STOP has been requested to the Pool")
+        self.__events.stop()
 
     def isAlive(self):
-        return self.__startProcess.is_set() and not self.__stopProcess.is_set()
+        return self.__events.isStarted() and not self.__events.isStopped()
 
     def is_alive(self):
         return self.isAlive()
 
     # properties
 
-    def checkPeriod():
-        def fget(self):
-            return self.__checkPeriod
+    @property
+    def checkPeriod(self):
+        return self.__checkPeriod
 
-        def fset(self, value):
-            oldValues = []
-            try:
-                for i, worker in enumerate(self.__workersLst):
-                    oldValues.append(worker.checkPeriod)
-                    worker.checkPeriod = value
-            except Exception as e:
-                self.error("Exception setting a new checkPeriod in worker "
-                           "%d (%s): %s" % (i, worker, e))
-                for j in range(i-1, -1, -1):
-                    worker.checkPeriod = oldValues[j]
-            else:
-                self.__checkPeriod = value
-
-        return locals()
-
-    checkPeriod = property(**checkPeriod())
+    @checkPeriod.setter
+    def checkPeriod(self, value):
+        oldValues = []
+        try:
+            for i, worker in enumerate(self.__workersLst):
+                oldValues.append(worker.checkPeriod)
+                worker.checkPeriod = value
+        except Exception as e:
+            self.error("Exception setting a new checkPeriod in worker "
+                       "%d (%s): %s" % (i, worker, e))
+            for j in range(i-1, -1, -1):
+                worker.checkPeriod = oldValues[j]
+        else:
+            self.__checkPeriod = value
 
     def activeWorkers():
         doc = """Number of workers available."""
@@ -158,31 +138,19 @@ class Pool(_Logger):
 
     activeWorkers = property(**activeWorkers())
 
-    def output():
-        doc = """"""
+    @property
+    def output(self):
+        return self.__collected
 
-        def fget(self):
-            return self.__collected
-
-        return locals()
-
-    output = property(**output())
-
-    def progress():
-        doc = """"""
-
-        def fget(self):
-            pending = self.__input.qsize()
-            nCollected = len(self.__collected)
-            self.debug("%d collected elements from %d inputs "
-                       "(%d to be taken by %d workers)"
-                       % (nCollected, self.__inputNelements, pending,
-                          self.activeWorkers))
-            return float(nCollected)/self.__inputNelements
-
-        return locals()
-
-    progress = property(**progress())
+    @property
+    def progress(self):
+        pending = self.__input.qsize()
+        nCollected = len(self.__collected)
+        self.debug("%d collected elements from %d inputs "
+                   "(%d to be taken by %d workers)"
+                   % (nCollected, self.__inputNelements, pending,
+                      self.activeWorkers))
+        return float(nCollected)/self.__inputNelements
 
     # internal characteristics ---
 
@@ -212,11 +180,6 @@ class Pool(_Logger):
     def __buildWorker(self, id):
         return _Worker(id, self.__target, self.__input, self.__output,
                        checkPeriod=self.checkPeriod,
-                       startProcessEvent=self.__startProcess,
-                       stepProcessEvent=self.__stepProcess,
-                       pauseProcessEvent=self.__pauseProcess,
-                       resumeProcessEvent=self.__resumeProcess,
-                       stopProcessEvent=self.__stopProcess,
                        preHook=self.__preHook,
                        preExtraArgs=self.__preExtraArgs,
                        postHook=self.__postHook,
@@ -230,13 +193,15 @@ class Pool(_Logger):
 
     def __poolMonitorThread(self):
         _current_thread().name = "PoolMonitor"
-        while not self.__startProcess.wait(self.checkPeriod):
+        while not self.__events.waitStart(self.checkPeriod):
             self.debug("Collector prepared, but processing not started")
             # FIXME: msg to be removed, together with the timeout
-        while not self.__stopProcess.is_set():
-            self.__stepProcess.wait()
-            self.__stepProcess.clear()
-            self.__collectOutputs()
+        while not self.__events.isStopped():
+            if self.__events.waitStep(self.checkPeriod):
+                self.debug("STEP event received")
+                self.__collectOutputs()
+            else:
+                self.debug("Periodic check")
             self.__reviewWorkers()
             self.__loadAverage.reviewLoadAverage()
 
@@ -256,4 +221,4 @@ class Pool(_Logger):
                 self.info("pop %s from the workers list" % (worker))
                 self.__workersLst.pop(i)
         if self.activeWorkers == 0:
-            self.__stopProcess.set()
+            self.__events.stop()

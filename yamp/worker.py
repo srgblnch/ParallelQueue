@@ -21,6 +21,7 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
+from .events import EventManager as _EventManager
 from .logger import Logger as _Logger
 from multiprocessing import current_process as _current_process
 from multiprocessing import Event as _Event
@@ -39,9 +40,6 @@ _MAXJOINTRIES = 3
 
 class Worker(_Logger):
     def __init__(self, id, target, inputQueue, outputQueue, checkPeriod=None,
-                 startProcessEvent=None, stepProcessEvent=None,
-                 pauseProcessEvent=None, resumeProcessEvent=None,
-                 stopProcessEvent=None,
                  preHook=None, preExtraArgs=None,
                  postHook=None, postExtraArgs=None,
                  *args, **kwargs):
@@ -57,8 +55,6 @@ class Worker(_Logger):
               for the method that will be executed by the child process.
             + outputQueue: multithreading queue where the results will be
               stored after the execution.
-            * {start, step, pause, resume, stop}ProcessEvent: multithreading
-              events to communicate conditions
             * {pre, post}Hook: callable objects to be executed before or after
               the target.
             * {pre, post}ExtraArgs: dictionaries that will be passed to hooks.
@@ -76,11 +72,7 @@ class Worker(_Logger):
         self.__checkPeriod = 60  # seconds
         self.checkPeriod = checkPeriod
         # Events ---
-        self.__startProcess = startProcessEvent or _Event()
-        self.__stepProcess = stepProcessEvent or _Event()
-        self.__pauseProcess = pauseProcessEvent or _Event()
-        self.__resumeProcess = resumeProcessEvent or _Event()
-        self.__stopProcess = stopProcessEvent or _Event()
+        self.__events = _EventManager()
         self.__internalEvent = _Event()
         self.__internalEvent.clear()
         # Hooks ---
@@ -97,6 +89,7 @@ class Worker(_Logger):
         self.__monitor.setDaemon(True)
         self.__monitor.start()
         self.__worker = _Process(target=self.__procedure)
+        self.__workerPausedFlag = False
 
     def __str__(self):
         return "%s()" % (self.name)
@@ -106,42 +99,27 @@ class Worker(_Logger):
 
     def start(self):
         """Command to launch the event needed to start the work"""
-        self.__startProcess.set()
+        self.__events.start()
 
     def pause(self):
         """Command to pause the execution."""
-        if self.__pauseProcess.is_set():
-            self.warning("Nothing to be paused while is already paused "
-                         "for Worker %d" % (self.__id))
-            return
-        self.__pauseProcess.set()
-        self.__resumeProcess.clear()
-        self.debug("PAUSE has been requested for Worker %d" % (self.__id))
+        self.debug("PAUSE has been requested to Worker %d" % (self.__id))
+        return self.__events.pause()
 
     def isPaused(self):
         """Request to know if the execution is on pause."""
-        return self.__pauseProcess.is_set() and\
-            not self.__resumeProcess.is_set()
+        return self.__events.isPaused()
         # FIXME: check if the process is really paused
 
     def resume(self):
         """Command to resume from pause."""
-        if not self.__pauseProcess.is_set():
-            self.warning("Nothing to be resumed if not paused for Worker %d"
-                         % (self.__id))
-            return
-        self.__pauseProcess.clear()
-        self.__resumeProcess.set()
-        self.debug("RESUME has been requested for Worker %d" % (self.__id))
+        self.debug("RESUME has been requested to Worker %d" % (self.__id))
+        return self.__events.resume()
 
     def stop(self):
         """Command to finish the execution of the work."""
-        if self.__stopProcess.is_set():
-            self.warning("Worker %d should be already stopping" % (self.__id))
-            return
-        self.__stopProcess.set()
-        self.__pauseProcess.set()
-        self.info("STOP has been requested for Worker %d" % (self.__id))
+        self.info("STOP has been requested to Worker %d" % (self.__id))
+        self.__events.stop()
 
 #     def abort(self):
 #         self.stop()  # TODO: break the execution
@@ -171,31 +149,30 @@ class Worker(_Logger):
 
     def _procedureHas2End(self):
         """End condition for the process"""
-        return self.__stopProcess.is_set()
+        return self.__events.isStopped()
 
     # thread and process ---
 
     def __thread(self):
         """Monitor thread function."""
         _current_thread().name = "Monitor%d" % (self.__id)
-        while not self.__startProcess.wait(self.__checkPeriod):
+        while not self.__events.waitStart(self.__checkPeriod):
             self.debug("Waiting to start" % self.__id)
             # FIXME: msg to be removed, together with the timeout
         self.info("Start to work: creating the fork")
         self.__worker.start()
         self.__processMonitoring()
+        self.debug("Monitor has finished its task")
 
     def __processMonitoring(self):
         self.debug("Start monitoring")
         while not self._endProcedure():
             try:
-                self.__doWait(self.__internalEvent, [[self.__pauseProcess,
+                self.__doWait(self.__internalEvent, [[self.__events.waitPause,
                                                      self.__doPause],
-                                                     [self.__resumeProcess,
+                                                     [self.__events.waitResume,
                                                      self.__doResume],
                                                      ])
-                if self._endProcedure():
-                    break
             except Exception as e:
                 self.error("Monitor exception: %s" % (e))
                 _print_exc()
@@ -204,21 +181,32 @@ class Worker(_Logger):
     def __doWait(self, primaryEvent, actionsLst):
         while not primaryEvent.wait(self.__checkPeriod):
             for event, action in actionsLst:
-                if event.is_set():
+                if event(self.__checkPeriod):
                     action()
+        self.debug("Internal event received")
 
     def __doPause(self):
         if _psutil is None:
             self.warning("Without psutil pause will be when the process "
                          "finish its current task.")
         else:
-            self.debug("psutil.Process(%d).suspend()" % (self.__worker.pid))
-            _psutil.Process(self.__worker.pid).suspend()
+            if not self.__workerPausedFlag:
+                self.debug("psutil.Process(%d).suspend()"
+                           % (self.__worker.pid))
+                _psutil.Process(self.__worker.pid).suspend()
+                self.__workerPausedFlag = True
+            else:
+                self.debug("Process(%d) already suspended"
+                           % (self.__worker.pid))
 
     def __doResume(self):
         if _psutil is not None:
-            self.debug("psutil.Process(%d).resume()" % (self.__worker.pid))
-            _psutil.Process(self.__worker.pid).resume()
+            if self.__workerPausedFlag:
+                self.debug("psutil.Process(%d).resume()" % (self.__worker.pid))
+                _psutil.Process(self.__worker.pid).resume()
+                self.__workerPausedFlag = False
+            else:
+                self.debug("Process(%d) already resumed" % (self.__worker.pid))
 
     def __doJoin(self):
         tries = 0
@@ -239,11 +227,11 @@ class Worker(_Logger):
         self.debug("Fork starts")
         while not self._endProcedure():
             try:
-                if self.__pauseProcess.is_set():
+                if self.__events.isPaused():
                     self.info("paused")
                     if self._procedureHas2End():
                         break
-                    while not self.__resumeProcess.wait(self.checkPeriod):
+                    while not self.__events.waitResume(self.checkPeriod):
                         pass
                     self.info("resume")
                 else:
@@ -264,12 +252,13 @@ class Worker(_Logger):
                         self.__postHook(self.__currentArgin,
                                         self.__currentArgout,
                                         **self.__postExtraArgs)
-                    self.__stepProcess.set()
+                    self.__events.step()
             except Exception as e:
                 self.error("exception: %s" % (e))
                 _print_exc()
         # process has finish, lets wake up the monitor
         self.__internalEvent.set()
+        self.debug("Internal event emitted to report end of the procedure")
 
     # properties ---
 

@@ -70,10 +70,7 @@ def firstTest():
     stop = _Event()
     printerLock = _Lock()
     print("\n\tFirst test:")
-    worker = Worker(id, target, input, output, startProcessEvent=start,
-                    stepProcessEvent=step, pauseProcessEvent=pause,
-                    resumeProcessEvent=resume, stopProcessEvent=stop,
-                    debug=True)
+    worker = Worker(id, target, input, output, debug=True)
     worker.start()
     sleep(3)
     worker.pause()
@@ -98,11 +95,7 @@ def secondTest():
     stop = _Event()
     printerLock = _Lock()
     print("\n\tSecond test:")
-    worker = Worker(id, target, input, output, startProcessEvent=start,
-                    stepProcessEvent=step, pauseProcessEvent=pause,
-                    resumeProcessEvent=resume, stopProcessEvent=stop,
-                    preHook=preProcess, preExtraArgs={'lock': printerLock},
-                    debug=True)
+    worker = Worker(id, target, input, output, debug=True)
     worker.postHook = postProcess
     worker.postExtraArgs = {'lock': printerLock,
                             'breaker': 8, 'worker': worker}
