@@ -80,6 +80,7 @@ def main():
 #         print pool.loggingFile()
         pool.log2file = True
         pool.checkPeriod = 1
+        sleep(1)
         pool.start()
         pauseLoops = 0
         while pool.isAlive():

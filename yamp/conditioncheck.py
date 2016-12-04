@@ -45,47 +45,47 @@ class ConditionCheck(_Logger):
 
     def value():
         def fget(self):
-            return self.__getValue()
+            return self._getValue()
 
         return locals()
 
     value = property(**value())
 
-    def __getValue(self):
+    def _getValue(self):
         raise NotImplementedError("Subclass must implement it")
 
     def warning():
         def fget(self):
-            return self.__getWarning()
+            return self._getWarning()
 
         def fset(self, value):
-            self.__setWarning(value)
+            self._setWarning(value)
 
         return locals()
 
     warning = property(**warning())
 
-    def __getWarning(self):
+    def _getWarning(self):
         raise NotImplementedError("Subclass must implement it")
     
-    def __setWarning(self, value):
+    def _setWarning(self, value):
         raise NotImplementedError("Subclass must implement it")
 
     def limit():
         def fget(self):
-            return self.__getLimit()
+            return self._getLimit()
 
         def fset(self, value):
-            self.__setLimit(value)
+            self._setLimit(value)
 
         return locals()
 
     limit = property(**limit())
 
-    def __getLimit(self):
+    def _getLimit(self):
         raise NotImplementedError("Subclass must implement it")
     
-    def __setLimit(self, value):
+    def _setLimit(self, value):
         raise NotImplementedError("Subclass must implement it")
 
     def review(self):

@@ -73,6 +73,8 @@ class Worker(_Logger):
         self.checkPeriod = checkPeriod
         # Events ---
         self.__events = _EventManager()
+        self.__prepared = _Event()
+        self.__prepared.clear()
         self.__internalEvent = _Event()
         self.__internalEvent.clear()
         # Hooks ---
@@ -97,9 +99,18 @@ class Worker(_Logger):
     def __repr__(self):
         return "%s(%d)" % (self.name, self.checkPeriod)
 
+    def prepared(self):
+        return self.__prepared.is_set()
+
+    def waitPrepared(self, timeout=None):
+        self.__prepared.wait(timeout)
+
     def start(self):
         """Command to launch the event needed to start the work"""
         self.__events.start()
+
+    def isStarted(self):
+        return self.__isProcessAlive()
 
     def pause(self):
         """Command to pause the execution."""
@@ -156,6 +167,7 @@ class Worker(_Logger):
     def __thread(self):
         """Monitor thread function."""
         _current_thread().name = "Monitor%d" % (self.__id)
+        self.__prepared.set()
         while not self.__events.waitStart(self.__checkPeriod):
             self.debug("Waiting to start")
             # FIXME: msg to be removed, together with the timeout

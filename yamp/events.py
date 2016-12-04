@@ -21,13 +21,11 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
+from .logger import Singleton as _Singleton
 from multiprocessing import Event as _Event
 from multiprocessing import current_process as _current_process
 from threading import current_thread as _current_thread
 from traceback import print_exc as _print_exc
-
-from .logger import Logger as _Logger
-from .logger import Singleton as _Singleton
 
 
 class EventManager(_Singleton):

@@ -31,6 +31,7 @@ from multiprocessing import Event as _Event
 from multiprocessing import Queue as _Queue
 from threading import current_thread as _current_thread
 from threading import Thread as _Thread
+from time import sleep as _sleep
 from .worker import Worker as _Worker
 
 
@@ -177,7 +178,7 @@ class Pool(_Logger):
         for i in range(self.__parallel):
             newWorker = self.__buildWorker(i)
             self.__appendWorker(newWorker)
-        self.debug("%d workers prepared" % (self.activeWorkers))
+        self.debug("%d workers ready" % (self.activeWorkers))
 
     def __buildWorker(self, id):
         worker = _Worker(id, self.__target, self.__input, self.__output,
@@ -187,6 +188,10 @@ class Pool(_Logger):
                          postHook=self.__postHook,
                          postExtraArgs=self.__postExtraArgs,)
         self.debug("Worker%d build" % (id))
+        while not worker.prepared():
+            self.debug("Worker%d not yet prepared, wait" % (id))
+            worker.waitPrepared(1)
+        self.debug("Worker%d ready" % (id))
         return worker
 
     def __appendWorker(self, worker):
@@ -221,10 +226,11 @@ class Pool(_Logger):
             self.debug("collect %d outputs" % (collected))
 
     def __reviewWorkers(self):
-        for worker in self.__workersLst:
+        for i, worker in enumerate(self.__workersLst):
             if not worker.isAlive():
-                i = self.__workersLst.index(worker)
                 self.info("pop %s from the workers list" % (worker))
                 self.__workersLst.pop(i)
+            elif self.__events.isStarted() and not worker.isStarted():
+                self.debug("Worker %d hasn't start and should" % (i))
         if self.activeWorkers == 0:
             self.__events.stop()

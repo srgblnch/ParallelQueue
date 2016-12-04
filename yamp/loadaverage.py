@@ -32,14 +32,14 @@ class LoadAverage(_ConditionCheck):
         self.__loadAverageWarning = [None, None, None]
         self.__loadAverageLimit = [None, None, None]
 
-    def __getValue(self):
+    def _getValue(self):
         self.__loadAverage = _getloadavg()
         return self.__loadAverage
 
-    def __getWarning(self):
+    def _getWarning(self):
         return self.__loadAverageWarning
 
-    def __setWarning(self, value):
+    def _setWarning(self, value):
         try:
             if type(value) is list and len(value) == 3:
                 lst = []
@@ -53,10 +53,10 @@ class LoadAverage(_ConditionCheck):
             raise TypeError("a %r cannot be set as a load average warning"
                             % (value))
 
-    def __getLimit(self):
+    def _getLimit(self):
         return self.__loadAverageLimit
 
-    def __setLimit(self, value):
+    def _setLimit(self, value):
         try:
             if type(value) is list and len(value) == 3:
                 lst = []
@@ -72,8 +72,7 @@ class LoadAverage(_ConditionCheck):
 
     def review(self):
         previous = self.__loadAverage
-        if self.__compare(self.__getValue(), self.__getLimit())\
-                and not self._IBookPause():
+        if self.__compare(self.value, self.limit) and not self._IBookPause():
             self.critical("load average %s pausing the processes"
                           % (str(self.__loadAverage)))
             self._bookPause()
@@ -81,7 +80,7 @@ class LoadAverage(_ConditionCheck):
             self.info("load average %s, resuming from pause"
                       % (str(self.__loadAverage)))
             self._resume()
-        elif self.__compare(self.__getValue(), self.__getWarning()):
+        elif self.__compare(self.__loadAverage, self.warning):
             if self.__compare(self.__loadAverage, previous):
                 self.warning("load average %s" % (str(self.__loadAverage)))
         else:
