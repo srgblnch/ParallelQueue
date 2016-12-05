@@ -84,6 +84,7 @@ class Pool(_Logger):
     # Interface ---
 
     def start(self):
+        self.debug("START has been requested to the Pool")
         self.__events.start()
 
     def pause(self):
@@ -230,7 +231,12 @@ class Pool(_Logger):
             if not worker.isAlive():
                 self.info("pop %s from the workers list" % (worker))
                 self.__workersLst.pop(i)
-            elif self.__events.isStarted() and not worker.isStarted():
-                self.debug("Worker %d hasn't start and should" % (i))
+            elif self.__events.isStarted() and\
+                    not worker.isStarted() and\
+                    not worker._endProcedure():
+                self.warning("Worker %d hasn't start when it should have"
+                             "(event: %s, worker: %s)"
+                             % (i, self.__events.isStarted(),
+                                worker.isStarted()))
         if self.activeWorkers == 0:
             self.__events.stop()

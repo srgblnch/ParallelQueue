@@ -62,7 +62,7 @@ def pauseTest(pool, pauseLoops):
             print("\n\tpause\n")
             pool.pause()
         print("\n\twait... (%d)\n" % (pauseLoops))
-        sleep(pool.checkPeriod)
+        sleep(1)  # pool.checkPeriod)
         return pauseLoops+1
     return pauseLoops
 
@@ -79,14 +79,14 @@ def main():
 #         pool.loggingFolder = '.'
 #         print pool.loggingFile()
         pool.log2file = True
-        pool.checkPeriod = 1
+        pool.checkPeriod = 10
         sleep(1)
         pool.start()
         pauseLoops = 0
         while pool.isAlive():
             sleep(1)
             print("\n\tprogress: %.2f%%\n" % ((pool.progress)*100))
-            pauseLoops = pauseTest(pool, pauseLoops)
+#             pauseLoops = pauseTest(pool, pauseLoops)
         res = pool.output
         res.sort()
         print("\n\tresults: %s\n" % (res))

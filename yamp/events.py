@@ -40,10 +40,11 @@ class EventManager(_Singleton):
 
     def start(self):
         # FIXME: this shall be only emitted by MainProcess, MainThread
-        if not self.__startEvent.is_set():
+        if True:  # not self.__startEvent.is_set():
             self.__startEvent.set()
             self.debug("START event emitted")
             return True
+        self.debug("START event already emitted")
         return False
 
     def isStarted(self):

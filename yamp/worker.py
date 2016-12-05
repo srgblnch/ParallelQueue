@@ -88,9 +88,9 @@ class Worker(_Logger):
         self.postExtraArgs = postExtraArgs
         # thread and process ---
         self.__monitor = _Thread(target=self.__thread)
+        self.__worker = _Process(target=self.__procedure)
         self.__monitor.setDaemon(True)
         self.__monitor.start()
-        self.__worker = _Process(target=self.__procedure)
         self.__workerPausedFlag = False
 
     def __str__(self):
@@ -107,6 +107,7 @@ class Worker(_Logger):
 
     def start(self):
         """Command to launch the event needed to start the work"""
+        self.debug("START has been requested to Worker %d" % (self.__id))
         self.__events.start()
 
     def isStarted(self):
