@@ -45,7 +45,7 @@ Use in a python interpreter
 ```python
 >>> import yamp
 >>> yamp.version()
-    '0.0.4-0'
+    '0.0.5-0'
 >>> arginLst = range(20)
 >>> checkPeriod = 2
 >>> from random import randint
@@ -73,13 +73,7 @@ The control of the *main thread* will be returned and it can be checked the prog
 The script '_testing/pool.py_' with the parameters '_--samples=10_' and '_--processors=3_' will produce an stdout similar to:
 
     (...)
-    2016-12-06 19:19:43.311158 -    DEBUG - yamp - MainProcess - MainThread - input: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] (10)\\
-    2016-12-06 19:19:43.317589 -    DEBUG - yamp - MainProcess - MainThread - Worker0 build
-    2016-12-06 19:19:43.317688 -    DEBUG - yamp - MainProcess - MainThread - Worker0 ready
-    2016-12-06 19:19:43.320405 -    DEBUG - yamp - MainProcess - MainThread - Worker1 build
-    2016-12-06 19:19:43.320490 -    DEBUG - yamp - MainProcess - MainThread - Worker1 ready
-    2016-12-06 19:19:43.323123 -    DEBUG - yamp - MainProcess - MainThread - Worker2 build
-    2016-12-06 19:19:43.323269 -    DEBUG - yamp - MainProcess - MainThread - Worker2 ready
+    2016-12-06 19:19:43.311158 -    DEBUG - yamp - MainProcess - MainThread - input: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] (10)
     2016-12-06 19:19:43.323326 -    DEBUG - yamp - MainProcess - MainThread - 3 workers ready
     2016-12-06 19:19:44.325203 -    DEBUG - yamp - MainProcess - MainThread - START has been requested to the Pool
     2016-12-06 19:19:44.325444 -    DEBUG - yamp - MainProcess - MainThread - START event emitted

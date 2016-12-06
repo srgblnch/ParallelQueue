@@ -200,11 +200,11 @@ class Pool(_Logger):
                          preExtraArgs=self.__preExtraArgs,
                          postHook=self.__postHook,
                          postExtraArgs=self.__postExtraArgs,)
-        self.debug("Worker%d build" % (id))
+        # self.debug("Worker%d build" % (id))
         while not worker.prepared():
             self.debug("Worker%d not yet prepared, wait" % (id))
             worker.waitPrepared(1)
-        self.debug("Worker%d ready" % (id))
+        # self.debug("Worker%d ready" % (id))
         return worker
 
     def __appendWorker(self, worker):
