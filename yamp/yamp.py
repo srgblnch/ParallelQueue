@@ -61,6 +61,7 @@ class Pool(_Logger):
         self.__checkPeriod = 60  # seconds
         self.__parallel = None
         self.__workersLst = []
+        self.__activeWorkers = 0
         self.__input = _Queue()
         self.__inputNelements = 0
         self.__output = _Queue()
@@ -136,7 +137,7 @@ class Pool(_Logger):
         doc = """Number of workers available."""
 
         def fget(self):
-            return len(self.__workersLst)
+            return self.__activeWorkers  # len(self.__workersLst)
 
         return locals()
 
@@ -155,6 +156,17 @@ class Pool(_Logger):
                    % (nCollected, self.__inputNelements, pending,
                       self.activeWorkers))
         return float(nCollected)/self.__inputNelements
+
+    @property
+    def contributions(self):
+        contributions = []
+        for worker in self.__workersLst:
+            try:
+                contributions.append(worker.contribution)
+            except Exception as e:
+                self.error("Cannot get the contribution of %s" % (worker))
+                contributions.append(None)
+        return contributions
 
     # internal characteristics ---
 
@@ -197,6 +209,7 @@ class Pool(_Logger):
 
     def __appendWorker(self, worker):
         self.__workersLst.append(worker)
+        self.__activeWorkers += 1
 
     def __prepareMonitoring(self):
         self.__poolMonitor.start()
@@ -230,11 +243,11 @@ class Pool(_Logger):
         for i, worker in enumerate(self.__workersLst):
             if not worker.isAlive():
                 self.info("pop %s from the workers list" % (worker))
-                self.__workersLst.pop(i)
+                self.__activeWorkers -= 1  # self.__workersLst.pop(i)
             elif self.__events.isStarted() and\
                     not worker.isStarted() and\
                     not worker._endProcedure():
-                self.warning("Worker %d hasn't start when it should have"
+                self.warning("Worker %d hasn't start when it should have "
                              "(event: %s, worker: %s)"
                              % (i, self.__events.isStarted(),
                                 worker.isStarted()))

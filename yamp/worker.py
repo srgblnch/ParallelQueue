@@ -21,12 +21,15 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
+from ctypes import c_ulonglong as _ulonglong
+from datetime import datetime as _datetime
+# from datetime import timedelta as _timedelta
 from .events import EventManager as _EventManager
 from .logger import Logger as _Logger
 from multiprocessing import current_process as _current_process
 from multiprocessing import Event as _Event
 from multiprocessing import Process as _Process
-from multiprocessing import Queue as _Queue
+from multiprocessing import Value as _Value
 try:
     import psutil as _psutil  # soft-dependency
 except:
@@ -68,6 +71,7 @@ class Worker(_Logger):
         self.__input = inputQueue
         self.__currentArgin = None
         self.__output = outputQueue
+        self.__ctr = _Value(_ulonglong, 0)
         self.__currentArgout = None
         self.__checkPeriod = 60  # seconds
         self.checkPeriod = checkPeriod
@@ -237,7 +241,9 @@ class Worker(_Logger):
         """Function of the fork process"""
         _current_process().name = "Process%d" % (self.__id)
         _current_thread().name = "Worker%d" % (self.__id)
-        self.debug("Fork starts")
+        
+        self.debug("Fork starts %s after the event trigger"
+                   % (_datetime.now()-self.__events.whenStarted()))
         while not self._endProcedure():
             try:
                 if self.__events.isPaused():
@@ -258,6 +264,7 @@ class Worker(_Logger):
                         break
                     self.__currentArgout = self.__target(self.__currentArgin)
                     self.info("argout: %s" % (self.__currentArgout))
+                    self.__ctr.value += 1
                     self.__output.put([self.__currentArgin,
                                        self.__currentArgout])
                     if self.__postHook is not None:
@@ -383,3 +390,13 @@ class Worker(_Logger):
         return locals()
 
     pid = property(**pid())
+
+    def contribution():
+        doc = """Report how many inputs has been processes by this worker"""
+
+        def fget(self):
+            return self.__ctr.value
+
+        return locals()
+
+    contribution = property(**contribution())

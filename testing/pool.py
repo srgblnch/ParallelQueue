@@ -42,11 +42,14 @@ def cmdArgs(parser):
     parser.add_option('', "--samples", type="int",
                       help="How many elements will be set in the arginLst.")
 
+MIN_T = 20
+MAX_T = 60
+
 
 def tester(argin):
     from random import randint
     argout = argin**2
-    sleep(randint(1, 5))
+    sleep(randint(MIN_T, MAX_T))
     print("%s^2 = %s" % (argin, argout))
     return argout
 
@@ -62,7 +65,7 @@ def pauseTest(pool, pauseLoops):
             print("\n\tpause\n")
             pool.pause()
         print("\n\twait... (%d)\n" % (pauseLoops))
-        sleep(1)  # pool.checkPeriod)
+        sleep(MIN_T)  # pool.checkPeriod)
         return pauseLoops+1
     return pauseLoops
 
@@ -76,16 +79,21 @@ def main():
     if options.samples is not None:
         arginLst = range(options.samples)
         pool = Pool(tester, arginLst, options.processors)
+        print("\n\tPrepared a Pool of %d workers to process %d samples. "
+              "Artificially, each sample will take randomly between "
+              "%d and %d seconds to complete\n"
+              % (pool.activeWorkers, len(arginLst), MIN_T, MAX_T))
 #         pool.loggingFolder = '.'
 #         print pool.loggingFile()
         pool.log2file = True
-        pool.checkPeriod = 10
+        pool.checkPeriod = MAX_T*2
         sleep(1)
         pool.start()
         pauseLoops = 0
         while pool.isAlive():
-            sleep(1)
-            print("\n\tprogress: %.2f%%\n" % ((pool.progress)*100))
+            sleep(MIN_T)
+            print("\n\tprogress: %.2f%%" % ((pool.progress)*100))
+            print("\tcontributions: %s\n" % (pool.contributions))
 #             pauseLoops = pauseTest(pool, pauseLoops)
         res = pool.output
         res.sort()

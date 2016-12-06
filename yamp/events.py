@@ -21,6 +21,7 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
+from datetime import datetime as _datetime
 from .logger import Singleton as _Singleton
 from multiprocessing import Event as _Event
 from multiprocessing import current_process as _current_process
@@ -32,6 +33,7 @@ class EventManager(_Singleton):
     def __init__(self):
         super(EventManager, self).__init__()
         self.__startEvent = _Event()
+        self.__whenStart = None
         self.__stepEvent = _Event()
         self.__pauseEvent = _Event()
         self.__pauseRequesterStack = []
@@ -42,6 +44,7 @@ class EventManager(_Singleton):
         # FIXME: this shall be only emitted by MainProcess, MainThread
         if True:  # not self.__startEvent.is_set():
             self.__startEvent.set()
+            self.__whenStart = _datetime.now()
             self.debug("START event emitted")
             return True
         self.debug("START event already emitted")
@@ -49,6 +52,9 @@ class EventManager(_Singleton):
 
     def isStarted(self):
         return self.__startEvent.is_set()
+
+    def whenStarted(self):
+        return self.__whenStart
 
     def step(self):
         # FIXME: this shall only be emitted by Workers
