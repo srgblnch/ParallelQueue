@@ -21,7 +21,8 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
-
+from datetime import datetime as _datetime
+from datetime import timedelta as _timedelta
 from .events import EventManager as _EventManager
 from .loadaverage import LoadAverage as _LoadAverage
 from .logger import Logger as _Logger
@@ -168,6 +169,28 @@ class Pool(_Logger):
                 contributions.append(None)
         return contributions
 
+    @property
+    def computation(self):
+        ts = []
+        tg = 0.0
+        for worker in self.__workersLst:
+            try:
+                tw = worker.computation
+                ts.append(_timedelta(seconds=tw))
+                tg += tw
+            except Exception as e:
+                self.error("Cannot get the computation of %s" % (worker))
+                ts.append(None)
+        t0 = self.__events.whenStarted()
+        t_diff = _datetime.now()-t0
+        tg = _timedelta(seconds=tg)
+        ratio = tg.total_seconds()/t_diff.total_seconds()
+        self.debug("Since %s (%s ago) %s of parallel computations (x%.2f)"
+                   "(reported by workers) distributed in [%s]"
+                   % (t0, t_diff, tg, ratio,
+                      "".join("%s, "% i for i in ts)[:-2]))
+        return tg, ts
+
     # internal characteristics ---
 
     def __prepareParallel(self, parallel):
@@ -179,7 +202,7 @@ class Pool(_Logger):
             if parallel < 0:
                 parallel = maxParallelprocesses + parallel
         self.__parallel = parallel
-        self.debug("Will use %d cores" % (self.__parallel))
+        self.debug("Will use %d workers" % (self.__parallel))
 
     def __prepareInputQueue(self, lst):
         for element in lst:
@@ -244,12 +267,12 @@ class Pool(_Logger):
             if not worker.isAlive():
                 self.info("pop %s from the workers list" % (worker))
                 self.__activeWorkers -= 1  # self.__workersLst.pop(i)
-            elif self.__events.isStarted() and\
-                    not worker.isStarted() and\
-                    not worker._endProcedure():
-                self.warning("Worker %d hasn't start when it should have "
-                             "(event: %s, worker: %s)"
-                             % (i, self.__events.isStarted(),
-                                worker.isStarted()))
+#             elif self.__events.isStarted() and\
+#                     not worker.isStarted() and\
+#                     not worker._endProcedure():
+#                 self.warning("Worker %d hasn't start when it should have "
+#                              "(event: %s, worker: %s)"
+#                              % (i, self.__events.isStarted(),
+#                                 worker.isStarted()))
         if self.activeWorkers == 0:
             self.__events.stop()

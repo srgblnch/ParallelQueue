@@ -26,6 +26,7 @@ from .logger import Singleton as _Singleton
 from multiprocessing import Event as _Event
 from multiprocessing import current_process as _current_process
 from threading import current_thread as _current_thread
+from threading import Event as _ThreadEvent
 from traceback import print_exc as _print_exc
 
 
@@ -39,6 +40,8 @@ class EventManager(_Singleton):
         self.__pauseRequesterStack = []
         self.__resumeEvent = _Event()
         self.__stopEvent = _Event()
+        # for self.__startEvent, use threading.Event instead of
+        # multiprocessing.Event hasn't change the minute delay
 
     def start(self):
         # FIXME: this shall be only emitted by MainProcess, MainThread

@@ -22,8 +22,9 @@ __license__ = "GPLv3+"
 __status__ = "development"
 
 from ctypes import c_ulonglong as _ulonglong
+from ctypes import c_float as _float
 from datetime import datetime as _datetime
-# from datetime import timedelta as _timedelta
+from datetime import timedelta as _timedelta
 from .events import EventManager as _EventManager
 from .logger import Logger as _Logger
 from multiprocessing import current_process as _current_process
@@ -72,6 +73,7 @@ class Worker(_Logger):
         self.__currentArgin = None
         self.__output = outputQueue
         self.__ctr = _Value(_ulonglong, 0)
+        self.__computationTime = _Value(_float, 0.0)
         self.__currentArgout = None
         self.__checkPeriod = 60  # seconds
         self.checkPeriod = checkPeriod
@@ -262,8 +264,13 @@ class Worker(_Logger):
                                        **self.__preExtraArgs)
                     if self._procedureHas2End():
                         break
+                    t_0 = _datetime.now()
                     self.__currentArgout = self.__target(self.__currentArgin)
-                    self.info("argout: %s" % (self.__currentArgout))
+                    t_diff = _datetime.now()-t_0
+                    t_diff = t_diff.total_seconds()
+                    self.__computationTime.value += t_diff
+                    self.info("argout: %s (%f seconds)"
+                              % (self.__currentArgout, t_diff))
                     self.__ctr.value += 1
                     self.__output.put([self.__currentArgin,
                                        self.__currentArgout])
@@ -400,3 +407,15 @@ class Worker(_Logger):
         return locals()
 
     contribution = property(**contribution())
+
+    def computation():
+        doc = """
+        Time (in seconds used by this worker in the execution of the target
+        """
+
+        def fget(self):
+            return self.__computationTime.value
+
+        return locals()
+
+    computation = property(**computation())

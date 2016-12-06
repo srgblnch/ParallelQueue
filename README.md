@@ -102,3 +102,5 @@ The script '_testing/pool.py_' with the parameters '_--samples=10_' and '_--proc
     2016-12-06 19:20:43.326832 -    DEBUG - yamp - Process1 - Worker1 - Fork starts 0:00:59.001310 after the event trigger
     2016-12-06 19:20:43.327090 -    DEBUG - yamp - Process1 - Worker1 - argin: 3
     (...)
+
+* Try to use _threading.Event_ instead of _multiprocessing.Event_ for the _start_ (only used by the _MainProcess_) didn't change this behaviour of delayed start.

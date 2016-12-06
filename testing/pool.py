@@ -21,7 +21,7 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
-
+from datetime import timedelta
 from yamp import Pool, version
 from time import sleep
 
@@ -92,8 +92,12 @@ def main():
         pauseLoops = 0
         while pool.isAlive():
             sleep(MIN_T)
-            print("\n\tprogress: %.2f%%" % ((pool.progress)*100))
-            print("\tcontributions: %s\n" % (pool.contributions))
+            computation, _ = pool.computation
+            contributions = pool.contributions
+            progress = pool.progress
+            print("\n\tprogress: %.2f%%" % ((progress)*100))
+            print("\tcontributions: %s" % (contributions))
+            print("\tcomputation: %s\n" % (computation))
 #             pauseLoops = pauseTest(pool, pauseLoops)
         res = pool.output
         res.sort()
