@@ -208,7 +208,13 @@ class Pool(_Logger):
         for element in lst:
             self.__input.put(element)
         self.__inputNelements = len(lst)
-        self.debug("input: %s (%d)" % (lst, self.__inputNelements))
+        if self.__inputNelements > 10:
+            head = "%s" % lst[:5]
+            tail = "%s" % lst[-5:]
+            lstStr = "%s (...) %s" % (head[:-1], tail[1:])
+        else:
+            lstStr = "%s" % (lst)
+        self.debug("input: %s (%d)" % (lstStr, self.__inputNelements))
 
     def __prepareWorkers(self):
         for i in range(self.__parallel):
