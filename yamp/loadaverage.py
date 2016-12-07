@@ -26,8 +26,8 @@ from os import getloadavg as _getloadavg
 
 
 class LoadAverage(_ConditionCheck):
-    def __init__(self):
-        super(LoadAverage, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(LoadAverage, self).__init__(*args, **kwargs)
         self.__loadAverage = [None, None, None]
         self.__loadAverageWarning = [None, None, None]
         self.__loadAverageLimit = [None, None, None]

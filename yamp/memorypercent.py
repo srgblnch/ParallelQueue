@@ -29,8 +29,8 @@ except:
 
 
 class MemoryPercent(_ConditionCheck):
-    def __init__(self):
-        super(MemoryPercent, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(MemoryPercent, self).__init__(*args, **kwargs)
         if _psutil is not None:
             self.__memoryPercentUsage = _psutil.virtual_memory().percent
             self.debug("Initial machine memory usage %f"

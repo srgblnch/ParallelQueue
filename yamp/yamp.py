@@ -56,7 +56,7 @@ class Pool(_Logger):
               processes that will participate. By default the maximum possible
               based on the number of cores available.
         """
-        super(self.__class__, self).__init__(*args, **kwargs)
+        super(Pool, self).__init__(*args, **kwargs)
         # prepare the parameters ---
         self.__target = target
         self.__checkPeriod = 60  # seconds

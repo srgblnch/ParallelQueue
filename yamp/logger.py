@@ -50,14 +50,14 @@ class Logger(object):
                  _logging.INFO: 'INFO',
                  _logging.DEBUG: 'DEBUG'}
 
-    def __init__(self, debug=False, loggerName=None):
+    def __init__(self, debug=False, loggerName=None, loggingFolder=None):
         super(Logger, self).__init__()
         # prepare internal vbles ---
         self.__debugFlag = _logging.debug
         self.__debuglevel = 0
         self.__log2file = False
         self.__loggerName = loggerName or 'yamp'
-        self.__logging_folder = None
+        self.__logging_folder = loggingFolder
         self.__logging_file = None
         # setup the object ---
         self.__devlogger = _logging.getLogger(self.__loggerName)
@@ -112,14 +112,9 @@ class Logger(object):
                     raise SystemError("No folder for logging available")
             return self.__logging_folder
 
-        # FIXME: how to modify this folder destination once the handler exist
-#         def fset(self, folder):
-#             if self.__buildLoggingFolder(folder):
-#                 self.__logging_folder = folder
-#                 self.__prepareHandler()
-#             else:
-#                 raise SystemError("Invalid folder destination, "
-#                                   "using previous")
+        # This property is not writable because, once set in the constructor,
+        # the log can start writing information. Change it later may misplace
+        # where the information was stored.
 
         return locals()
 

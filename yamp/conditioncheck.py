@@ -27,8 +27,8 @@ from multiprocessing import Event as _Event
 
 
 class ConditionCheck(_Logger):
-    def __init__(self):
-        super(ConditionCheck, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(ConditionCheck, self).__init__(*args, **kwargs)
         self.__IPaused = _Event()
         self.__events = _EventManager()
 
