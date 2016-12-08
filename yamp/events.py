@@ -31,8 +31,8 @@ from traceback import print_exc as _print_exc
 
 
 class EventManager(_Singleton):
-    def __init__(self):
-        super(EventManager, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(EventManager, self).__init__(*args, **kwargs)
         self.__startEvent = _Event()
         self.__whenStart = None
         self.__stepEvent = _Event()
