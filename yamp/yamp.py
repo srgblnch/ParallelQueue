@@ -71,7 +71,11 @@ class Pool(_Logger):
         self.__collected = []
         self.__loadAverage = _LoadAverage(*args, **kwargs)
         self.__memoryPercent = _MemoryPercent(*args, **kwargs)
-        self.__events = _EventManager(*args, **kwargs)
+        self.__events = _EventManager()
+        self.__events.loggingFolder = self.loggingFolder
+        self.__events.loggerName = self.loggerName
+        self.__events.logLevel = self.logLevel
+        self.__events.logEnable = self.logEnable
         # hooks ---
         self.__preHook = preHook
         self.__preExtraArgs = preExtraArgs
@@ -86,7 +90,7 @@ class Pool(_Logger):
     # Interface ---
 
     def start(self):
-        self.debug("START has been requested to the Pool")
+        self.info("START has been requested to the Pool")
         self.__events.start()
 
     def pause(self):
@@ -167,6 +171,7 @@ class Pool(_Logger):
             except Exception as e:
                 self.error("Cannot get the contribution of %s" % (worker))
                 contributions.append(None)
+        self.debug("Checked contributions: %s" % contributions)
         return contributions
 
     @property
@@ -202,7 +207,7 @@ class Pool(_Logger):
             if parallel < 0:
                 parallel = maxParallelprocesses + parallel
         self.__parallel = parallel
-        self.debug("Will use %d workers" % (self.__parallel))
+        self.info("Will use %d workers" % (self.__parallel))
 
     def __prepareInputQueue(self, lst):
         for element in lst:
@@ -267,12 +272,19 @@ class Pool(_Logger):
                 collected += 1
                 self.__collected.append(data)
             self.debug("collect %d outputs" % (collected))
+        if len(self.__collected) == self.__inputNelements:
+            self.info("All %d inputs processed and collected"
+                      % (self.__inputNelements))
+            self.stop()
 
     def __reviewWorkers(self):
         for i, worker in enumerate(self.__workersLst):
             if not worker.isAlive():
                 self.info("pop %s from the workers list" % (worker))
-                self.__activeWorkers -= 1  # self.__workersLst.pop(i)
+                if self.__activeWorkers > 0:
+                    self.__activeWorkers -= 1  # self.__workersLst.pop(i)
+                else:
+                    self.error("CANNOT remove more workers")
 #             elif self.__events.isStarted() and\
 #                     not worker.isStarted() and\
 #                     not worker._endProcedure():

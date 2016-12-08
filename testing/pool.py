@@ -23,6 +23,7 @@ __status__ = "development"
 
 from datetime import timedelta
 from yamp import Pool, version
+from logging import DEBUG
 from time import sleep
 
 
@@ -78,7 +79,8 @@ def main():
     print("\n\tUsing yamp-%s\n" % (version()))
     if options.samples is not None:
         arginLst = range(options.samples)
-        pool = Pool(tester, arginLst, options.processors)
+        pool = Pool(tester, arginLst, options.processors, debug=True,
+                    logLevel=DEBUG, loggerName='PoolTest', loggingFolder='.')
         print("\n\tPrepared a Pool of %d workers to process %d samples. "
               "Artificially, each sample will take randomly between "
               "%d and %d seconds to complete\n"

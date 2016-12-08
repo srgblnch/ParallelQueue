@@ -113,7 +113,7 @@ class Worker(_Logger):
 
     def start(self):
         """Command to launch the event needed to start the work"""
-        self.debug("START has been requested to Worker %d" % (self.__id))
+        self.info("START has been requested to Worker %d" % (self.__id))
         self.__events.start()
 
     def isStarted(self):
@@ -121,7 +121,7 @@ class Worker(_Logger):
 
     def pause(self):
         """Command to pause the execution."""
-        self.debug("PAUSE has been requested to Worker %d" % (self.__id))
+        self.info("PAUSE has been requested to Worker %d" % (self.__id))
         return self.__events.pause()
 
     def isPaused(self):
@@ -131,7 +131,7 @@ class Worker(_Logger):
 
     def resume(self):
         """Command to resume from pause."""
-        self.debug("RESUME has been requested to Worker %d" % (self.__id))
+        self.info("RESUME has been requested to Worker %d" % (self.__id))
         return self.__events.resume()
 
     def stop(self):
@@ -243,9 +243,8 @@ class Worker(_Logger):
         """Function of the fork process"""
         _current_process().name = "Process%d" % (self.__id)
         _current_thread().name = "Worker%d" % (self.__id)
-        
-        self.debug("Fork starts %s after the event trigger"
-                   % (_datetime.now()-self.__events.whenStarted()))
+        self.info("Fork starts %s after the event trigger"
+                  % (_datetime.now()-self.__events.whenStarted()))
         while not self._endProcedure():
             try:
                 if self.__events.isPaused():
@@ -269,7 +268,7 @@ class Worker(_Logger):
                     t_diff = _datetime.now()-t_0
                     t_diff = t_diff.total_seconds()
                     self.__computationTime.value += t_diff
-                    self.info("argout: %s (%f seconds)"
+                    self.debug("argout: %s (%f seconds)"
                               % (self.__currentArgout, t_diff))
                     self.__ctr.value += 1
                     self.__output.put([self.__currentArgin,
