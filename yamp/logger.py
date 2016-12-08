@@ -216,3 +216,6 @@ class Singleton(Logger):
             cls._instances[cls] = \
                 super(Singleton, cls).__new__(cls, *args, **kwargs)
         return cls._instances[cls]
+
+    def __init__(self, *args, **kwargs):
+        super(Singleton, self).__init__(*args, **kwargs)
