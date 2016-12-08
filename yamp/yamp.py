@@ -80,7 +80,7 @@ class Pool(_Logger):
         # setup ---
         self.__prepareParallel(parallel)
         self.__prepareInputQueue(arginLst)
-        self.__prepareWorkers()
+        self.__prepareWorkers(*args, **kwargs)
         self.__prepareMonitoring()
 
     # Interface ---
@@ -216,19 +216,19 @@ class Pool(_Logger):
             lstStr = "%s" % (lst)
         self.debug("input: %s (%d)" % (lstStr, self.__inputNelements))
 
-    def __prepareWorkers(self):
+    def __prepareWorkers(self, *args, **kwargs):
         for i in range(self.__parallel):
-            newWorker = self.__buildWorker(i)
+            newWorker = self.__buildWorker(i, *args, **kwargs)
             self.__appendWorker(newWorker)
         self.debug("%d workers ready" % (self.activeWorkers))
 
-    def __buildWorker(self, id):
+    def __buildWorker(self, id, *args, **kwargs):
         worker = _Worker(id, self.__target, self.__input, self.__output,
                          checkPeriod=self.checkPeriod,
                          preHook=self.__preHook,
                          preExtraArgs=self.__preExtraArgs,
                          postHook=self.__postHook,
-                         postExtraArgs=self.__postExtraArgs,)
+                         postExtraArgs=self.__postExtraArgs, *args, **kwargs)
         # self.debug("Worker%d build" % (id))
         while not worker.prepared():
             self.debug("Worker%d not yet prepared, wait" % (id))
