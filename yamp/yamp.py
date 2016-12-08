@@ -71,7 +71,7 @@ class Pool(_Logger):
         self.__collected = []
         self.__loadAverage = _LoadAverage(*args, **kwargs)
         self.__memoryPercent = _MemoryPercent(*args, **kwargs)
-        self.__events = _EventManager()
+        self.__events = _EventManager(*args, **kwargs)
         # hooks ---
         self.__preHook = preHook
         self.__preExtraArgs = preExtraArgs
