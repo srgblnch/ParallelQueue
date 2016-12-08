@@ -60,6 +60,7 @@ class Logger(object):
         self.__loggerName = loggerName or 'yamp'
         self.__loggingFolder = loggingFolder
         self.__loggingFile = None
+        self._instances = []  # FIXME: this is dirty and ugly
         # setup the object ---
         self.__devlogger = _logging.getLogger(self.__loggerName)
         self.__handler = None
@@ -106,7 +107,8 @@ class Logger(object):
                                                       backupCount=5)
             self.__handler.setLevel(_logging.NOTSET)
             formatter = _logging.Formatter('%(asctime)s - %(levelname)s - '
-                                           '%(name)s - %(message)s')
+                                           '%(name)s - %(processName)s - '
+                                           '%(threadName)s - %(message)s')
             self.__handler.setFormatter(formatter)
             self.__devlogger.addHandler(self.__handler)
         else:
@@ -142,6 +144,8 @@ class Logger(object):
             if type(value) is not bool:
                 raise AssertionError("The value must be boolean")
             self.__logEnable = value
+            for child in self._instances:
+                child.logEnable = value
 
         return locals()
 
@@ -160,6 +164,8 @@ class Logger(object):
             if self.__handler is not None:
                 self.__handler.setLevel(level)
             self.__logLevel = level
+            for child in self._instances:
+                child.logLevel = value
 
         return locals()
 
@@ -175,6 +181,8 @@ class Logger(object):
             if type(value) is not bool:
                 raise AssertionError("The value must be boolean")
             self.__log2file = value
+            for child in self._instances:
+                child.log2file = value
 
         return locals()
 
@@ -195,6 +203,8 @@ class Logger(object):
             except Exception as e:
                 self.__loggerName = backName
                 self.error("CANNOT set %s as logging folder: %s" % (name, e))
+            for child in self._instances:
+                child.loggerName = value
 
         return locals()
 
@@ -215,6 +225,8 @@ class Logger(object):
             except Exception as e:
                 self.__loggingFolder = backFolder
                 self.error("CANNOT set %s as logging folder: %s" % (folder, e))
+            for child in self._instances:
+                child.loggingFolder = value
 
         return locals()
 

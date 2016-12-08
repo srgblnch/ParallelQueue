@@ -70,12 +70,15 @@ class Pool(_Logger):
         self.__poolMonitor.setDaemon(True)
         self.__collected = []
         self.__loadAverage = _LoadAverage(*args, **kwargs)
+        self._instances.append(self.__loadAverage)
         self.__memoryPercent = _MemoryPercent(*args, **kwargs)
+        self._instances.append(self.__memoryPercent)
         self.__events = _EventManager()
         self.__events.loggingFolder = self.loggingFolder
         self.__events.loggerName = self.loggerName
         self.__events.logLevel = self.logLevel
         self.__events.logEnable = self.logEnable
+        self._instances.append(self.__events)
         # hooks ---
         self.__preHook = preHook
         self.__preExtraArgs = preExtraArgs
@@ -225,6 +228,7 @@ class Pool(_Logger):
         for i in range(self.__parallel):
             newWorker = self.__buildWorker(i, *args, **kwargs)
             self.__appendWorker(newWorker)
+            self._instances.append(newWorker)
         self.debug("%d workers ready" % (self.activeWorkers))
 
     def __buildWorker(self, id, *args, **kwargs):
