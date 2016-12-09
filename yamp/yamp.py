@@ -33,6 +33,7 @@ from multiprocessing import Queue as _Queue
 from threading import current_thread as _current_thread
 from threading import Thread as _Thread
 from time import sleep as _sleep
+from version import version as _version
 from .worker import Worker as _Worker
 
 
@@ -89,6 +90,7 @@ class Pool(_Logger):
         self.__prepareInputQueue(arginLst)
         self.__prepareWorkers(*args, **kwargs)
         self.__prepareMonitoring()
+        self.debug("Prepared a yamp.Pool() version %s" % (_version()))
 
     # Interface ---
 
@@ -164,6 +166,18 @@ class Pool(_Logger):
                    % (nCollected, self.__inputNelements, pending,
                       self.activeWorkers))
         return float(nCollected)/self.__inputNelements
+
+    @property
+    def workersStarted(self):
+        states = []
+        for worker in self.__workersLst:
+            try:
+                states.append(worker.isStarted())
+            except Exception as e:
+                self.error("Cannot get the state of %s" % (worker))
+                states.append(None)
+        self.debug("Checked states: %s" % states)
+        return states
 
     @property
     def contributions(self):
