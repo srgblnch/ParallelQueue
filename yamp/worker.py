@@ -181,7 +181,7 @@ class Worker(_Logger):
         self.info("Start to work: creating the fork")
         self.__worker.start()
         self.__processMonitoring()
-        self.debug("Monitor has finished its task")
+        self.info("Monitor has finished its task")
 
     def __processMonitoring(self):
         self.debug("Start monitoring")
@@ -237,7 +237,7 @@ class Worker(_Logger):
                 if tries > _MAXJOINTRIES and _psutil is not None:
                     self.error("Worker hasn't finishing, terminating")
                     _psutil.Process(self.__worker.pid).terminate()
-        self.info("Worker %d joined" % (self.__id))
+        self.debug("Worker %d joined" % (self.__id))
 
     def __procedure(self):
         """Function of the fork process"""

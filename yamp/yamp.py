@@ -117,7 +117,7 @@ class Pool(_Logger):
         self.__events.stop()
 
     def isAlive(self):
-        return self.__events.isStarted() and not self.__events.isStopped()
+        return self.__poolMonitor.isAlive()
 
     def is_alive(self):
         return self.isAlive()
@@ -281,6 +281,12 @@ class Pool(_Logger):
             self.__reviewWorkers()
             self.__loadAverage.review()
             self.__memoryPercent.review()
+        while self.activeWorkers > 0:
+            self.debug("Waiting workers to finish")
+            self.__reviewWorkers()
+            if self.activeWorkers > 0:
+                _sleep(self.checkPeriod)
+        self.debug("Pool complete, exiting")
 
     def __collectOutputs(self):
         while not self.__output.empty():

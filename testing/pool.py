@@ -80,14 +80,14 @@ def main():
     if options.samples is not None:
         arginLst = range(options.samples)
         pool = Pool(tester, arginLst, options.processors, debug=True,
-                    logLevel=DEBUG, loggerName='PoolTest', loggingFolder='.')
+                    logLevel=DEBUG, log2File=True, loggerName='PoolTest',
+                    loggingFolder='.')
         print("\n\tPrepared a Pool of %d workers to process %d samples. "
               "Artificially, each sample will take randomly between "
               "%d and %d seconds to complete\n"
               % (pool.activeWorkers, len(arginLst), MIN_T, MAX_T))
 #         pool.loggingFolder = '.'
 #         print pool.loggingFile()
-        pool.log2file = True
         pool.checkPeriod = MAX_T*2
         sleep(1)
         pool.start()

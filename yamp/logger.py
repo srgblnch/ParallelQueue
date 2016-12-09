@@ -50,13 +50,13 @@ class Logger(object):
                  _logging.INFO: 'INFO',
                  _logging.DEBUG: 'DEBUG'}
 
-    def __init__(self, debug=False, logLevel=_logging.INFO, loggerName=None,
-                 loggingFolder=None):
+    def __init__(self, debug=False, logLevel=_logging.INFO, log2File=False,
+                 loggerName=None, loggingFolder=None):
         super(Logger, self).__init__()
         # prepare internal vbles ---
         self.__logEnable = debug
         self.__logLevel = logLevel
-        self.__log2file = False
+        self.__log2file = log2File
         self.__loggerName = loggerName or 'yamp'
         self.__loggingFolder = loggingFolder
         self.__loggingFile = None
