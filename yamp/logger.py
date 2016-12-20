@@ -103,7 +103,7 @@ class Logger(object):
             self.__devlogger.setLevel(_logging.DEBUG)
             self.__handler = \
                 _logging.handlers.RotatingFileHandler(self.loggingFile,
-                                                      maxBytes=10000000,
+                                                      maxBytes=90000000,
                                                       backupCount=5)
             self.__handler.setLevel(_logging.NOTSET)
             formatter = _logging.Formatter('%(asctime)s - %(levelname)s - '
