@@ -67,7 +67,7 @@ class ConditionCheck(_Logger):
 
     def _getWarning(self):
         raise NotImplementedError("Subclass must implement it")
-    
+
     def _setWarning(self, value):
         raise NotImplementedError("Subclass must implement it")
 
@@ -84,7 +84,7 @@ class ConditionCheck(_Logger):
 
     def _getLimit(self):
         raise NotImplementedError("Subclass must implement it")
-    
+
     def _setLimit(self, value):
         raise NotImplementedError("Subclass must implement it")
 

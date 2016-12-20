@@ -21,10 +21,12 @@ __copyright__ = "Copyright 2016 Sergi Blanch-Torne"
 __license__ = "GPLv3+"
 __status__ = "development"
 
+from datetime import datetime
 from datetime import timedelta
-from yamp import Pool, version
 from logging import DEBUG
+import sys
 from time import sleep
+from yamp import Pool, version
 
 
 def cmdArgs(parser):
@@ -46,12 +48,20 @@ def cmdArgs(parser):
 MIN_T = 20
 MAX_T = 60
 
+CPUINTENSIVE = False
+
 
 def tester(argin):
     from random import randint
-    argout = argin**2
-    sleep(randint(MIN_T, MAX_T))
-    print("%s^2 = %s" % (argin, argout))
+    if CPUINTENSIVE:
+        t0 = datetime.now()
+        t_ = randint(MIN_T, MAX_T)
+        while (datetime.now()-t0).seconds < t_:
+            argout = argin**2
+    else:
+        sleep(randint(MIN_T, MAX_T))
+        argout = argin**2
+    # print("%s^2 = %s" % (argin, argout))
     return argout
 
 
@@ -111,8 +121,10 @@ def main():
         res = pool.output
         res.sort()
         print("\n\tresults: %s\n" % (res))
+        sys.exit(0)
     else:
         print("\tNo default action, check help to know what can be done.\n")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

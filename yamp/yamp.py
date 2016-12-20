@@ -63,7 +63,6 @@ class Pool(_Logger):
         self.__checkPeriod = 60  # seconds
         self.__parallel = None
         self.__workersLst = []
-        self.__activeWorkers = 0
         self.__input = _Queue()
         self.__inputNelements = 0
         self.__output = _Queue()
@@ -147,7 +146,7 @@ class Pool(_Logger):
         doc = """Number of workers available."""
 
         def fget(self):
-            return self.__activeWorkers  # len(self.__workersLst)
+            return self.workersStarted.count(True)
 
         return locals()
 
@@ -165,7 +164,8 @@ class Pool(_Logger):
                    "(%d to be taken by %d workers)"
                    % (nCollected, self.__inputNelements, pending,
                       self.activeWorkers))
-        return float(nCollected)/self.__inputNelements
+        progress = float(nCollected)/self.__inputNelements
+        return progress
 
     @property
     def workersStarted(self):
@@ -210,7 +210,7 @@ class Pool(_Logger):
         self.debug("Since %s (%s ago) %s of parallel computations (x%.2f)"
                    "(reported by workers) distributed in [%s]"
                    % (t0, t_diff, tg, ratio,
-                      "".join("%s, "% i for i in ts)[:-2]))
+                      "".join("%s, " % i for i in ts)[:-2]))
         return tg, ts
 
     # internal characteristics ---
@@ -243,6 +243,7 @@ class Pool(_Logger):
             newWorker = self.__buildWorker(i, *args, **kwargs)
             self.__appendWorker(newWorker)
             self._instances.append(newWorker)
+            _sleep(0.1)  # to give space to the worker monitor thread
         self.debug("%d workers ready" % (self.activeWorkers))
 
     def __buildWorker(self, id, *args, **kwargs):
@@ -252,16 +253,13 @@ class Pool(_Logger):
                          preExtraArgs=self.__preExtraArgs,
                          postHook=self.__postHook,
                          postExtraArgs=self.__postExtraArgs, *args, **kwargs)
-        # self.debug("Worker%d build" % (id))
         while not worker.prepared():
             self.debug("Worker%d not yet prepared, wait" % (id))
             worker.waitPrepared(1)
-        # self.debug("Worker%d ready" % (id))
         return worker
 
     def __appendWorker(self, worker):
         self.__workersLst.append(worker)
-        self.__activeWorkers += 1
 
     def __prepareMonitoring(self):
         self.__poolMonitor.start()
@@ -304,11 +302,13 @@ class Pool(_Logger):
     def __reviewWorkers(self):
         for i, worker in enumerate(self.__workersLst):
             if not worker.isAlive():
-                self.info("pop %s from the workers list" % (worker))
-                if self.__activeWorkers > 0:
-                    self.__activeWorkers -= 1  # self.__workersLst.pop(i)
+                if self.progress > 100:
+                    self.warning("Worker %s is not alive! Rebuild it"
+                                 % (worker.id))
+                    self.__workersLst[i] = self.__buildWorker(i)
                 else:
-                    self.error("CANNOT remove more workers")
+                    self.info("pop %s from the workers list" % (worker))
+                    self.__workersLst.pop(i)
 #             elif self.__events.isStarted() and\
 #                     not worker.isStarted() and\
 #                     not worker._endProcedure():

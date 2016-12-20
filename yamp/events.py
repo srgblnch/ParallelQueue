@@ -25,6 +25,7 @@ from datetime import datetime as _datetime
 from .logger import Singleton as _Singleton
 from multiprocessing import Event as _Event
 from multiprocessing import current_process as _current_process
+from time import sleep as _sleep
 from threading import current_thread as _current_thread
 from threading import Event as _ThreadEvent
 from traceback import print_exc as _print_exc
@@ -49,6 +50,7 @@ class EventManager(_Singleton):
             self.__startEvent.set()
             self.__whenStart = _datetime.now()
             self.debug("START event emitted")
+            _sleep(0.1)
             return True
         self.debug("START event already emitted")
         return False
@@ -63,7 +65,7 @@ class EventManager(_Singleton):
         # FIXME: this shall only be emitted by Workers
         self.__stepEvent.set()
         self.debug("STEP event emitted")
-    
+
     def stepClean(self):
         self.__stepEvent.clear()
         self.debug("STEP event catch")
@@ -113,6 +115,7 @@ class EventManager(_Singleton):
         return self.__stopEvent.is_set()
 
     def waitStart(self, timeout=None):
+        self.debug("waitStart(%s)" % (str(timeout)))
         return self.__startEvent.wait(timeout)
 
     def waitStep(self, timeout=None):
@@ -138,7 +141,7 @@ class EventManager(_Singleton):
                 self.debug("Found (%s, %s) as requester in position %d"
                            % (processName, threadName, i))
                 return (True, i)
-            elif nonBookRequest is None and request[2] == False:
+            elif nonBookRequest is None and request[2] is False:
                 nonBookRequest = i
         self.debug("NOT found (%s, %s) as requester"
                    % (processName, threadName))

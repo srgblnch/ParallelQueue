@@ -35,6 +35,7 @@ try:
     import psutil as _psutil  # soft-dependency
 except:
     _psutil = None
+from time import sleep as _sleep
 from threading import Thread as _Thread
 from threading import current_thread as _current_thread
 from traceback import print_exc as _print_exc
@@ -94,10 +95,14 @@ class Worker(_Logger):
         self.postExtraArgs = postExtraArgs
         # thread and process ---
         self.__monitor = _Thread(target=self.__thread)
-        self.__worker = _Process(target=self.__procedure)
+        self.__worker = None
         self.__monitor.setDaemon(True)
         self.__monitor.start()
         self.__workerPausedFlag = False
+
+    @property
+    def id(self):
+        return self.__id
 
     def __str__(self):
         return "%s()" % (self.name)
@@ -148,17 +153,17 @@ class Worker(_Logger):
         # TODO: those condition must be reviewed.
 
     def __isProcessAlive(self):
-        return self.__worker.is_alive()
+        return self.__worker is not None and self.__worker.is_alive()
 
-    def __checkDeadProcess(self):
-        if not self.__isProcessAlive():
-            if self._endProcedure():
-                self.info("Worker has finish and nothing else to be made.")
-                return
-            self.critical("process has died and it shouldn't!")
-            self.__input.put(self.__currentArgin)
-            self.__worker = _Process(target=self.__procedure)
-            self.__worker.start()
+#     def __checkDeadProcess(self):
+#         if not self.__isProcessAlive():
+#             if self._endProcedure():
+#                 self.info("Worker has finish and nothing else to be made.")
+#                 return
+#             self.critical("process has died and it shouldn't!")
+#             self.__input.put(self.__currentArgin)
+#             self.__worker = _Process(target=self.__procedure)
+#             self.__worker.start()
 
     # TODO: progress feature
 
@@ -175,10 +180,12 @@ class Worker(_Logger):
         """Monitor thread function."""
         _current_thread().name = "Monitor%d" % (self.__id)
         self.__prepared.set()
+        self.info("Creating the fork")
+        self.__worker = _Process(target=self.__procedure)
         while not self.__events.waitStart(self.__checkPeriod):
             self.debug("Waiting to start")
             # FIXME: msg to be removed, together with the timeout
-        self.info("Start to work: creating the fork")
+        self.info("Starting the fork")
         self.__worker.start()
         self.__processMonitoring()
         self.info("Monitor has finished its task")
@@ -208,7 +215,7 @@ class Worker(_Logger):
         if _psutil is None:
             self.warning("Without psutil pause will be when the process "
                          "finish its current task.")
-        else:
+        elif self.__worker is not None:
             if not self.__workerPausedFlag:
                 self.debug("psutil.Process(%d).suspend()"
                            % (self.__worker.pid))
@@ -219,7 +226,7 @@ class Worker(_Logger):
                            % (self.__worker.pid))
 
     def __doResume(self):
-        if _psutil is not None:
+        if _psutil is not None and self.__worker is not None:
             if self.__workerPausedFlag:
                 self.debug("psutil.Process(%d).resume()" % (self.__worker.pid))
                 _psutil.Process(self.__worker.pid).resume()
@@ -229,6 +236,9 @@ class Worker(_Logger):
 
     def __doJoin(self):
         tries = 0
+        if self.__worker is None:
+            self.debug("No worker to be joined")
+            return
         while self.__worker.is_alive():
             self.__worker.join(self.__checkPeriod)
             if self.__worker.is_alive():
@@ -243,8 +253,15 @@ class Worker(_Logger):
         """Function of the fork process"""
         _current_process().name = "Process%d" % (self.__id)
         _current_thread().name = "Worker%d" % (self.__id)
-        self.info("Fork starts %s after the event trigger"
-                  % (_datetime.now()-self.__events.whenStarted()))
+        self.debug("Fork build")
+        while not self.__events.waitStart(self.checkPeriod):
+            self.debug("Waiting start...")
+        try:
+            self.info("Fork starts %s after the event trigger"
+                      % (_datetime.now()-self.__events.whenStarted()))
+        except Exception as e:
+            self.warning("Start event received but not propagated when "
+                         "it was triggered")
         while not self._endProcedure():
             try:
                 if self.__events.isPaused():
@@ -269,7 +286,7 @@ class Worker(_Logger):
                     t_diff = t_diff.total_seconds()
                     self.__computationTime.value += t_diff
                     self.debug("argout: %s (%f seconds)"
-                              % (self.__currentArgout, t_diff))
+                               % (self.__currentArgout, t_diff))
                     self.__ctr.value += 1
                     self.__output.put([self.__currentArgin,
                                        self.__currentArgout])

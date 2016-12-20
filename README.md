@@ -16,12 +16,15 @@ Perhaps the name could be better but it is a coincidence with [young tramp](http
 - [ ] Improve the input: no need to be build before, but can be generated while needed.
 - [x] Control memory usage (psutil).
 - [x] Control machine load.
+  - [ ] Default warning when last minute reach the number of cores
+  - [ ] Default limit when the three values reach the number of cores
 - [x] Hooks. At least, after the worker target execution allow to execute something, but with in a Lock because is a place to report results in a file (for example).
 - [ ] Python 3.5 together with the current 2.7 support.
 - [ ] Cythonize.
 - [ ] Look on *pkg_resources* to improve version numbering.
 - [x] When enter in _pause_ mode, use _psutil_ to suspend the workers until conditions recovers and the work can be resumed (then resume the workers).
   - [ ] This many enter in a loop of _suspend-resume_. Raise the bell to reduce the number of parallel workers.
+  - [ ] Trigger the _pause_ when the limit is reached, but _resume_ when warning is clean.
   - [ ] In the warning sections of memory use and machine load, those workers can be _reniced_ to reduce their priority.
 
 
