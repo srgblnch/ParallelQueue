@@ -127,7 +127,7 @@ class EventManager(_Singleton):
     def waitResume(self, timeout=None):
         return self.__resumeEvent.wait(timeout)
 
-    def waitStop(self, timeput=None):
+    def waitStop(self, timeout=None):
         return self.__stopEvent.wait(timeout)
 
     # pause & resume ---
