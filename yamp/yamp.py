@@ -121,6 +121,9 @@ class Pool(_Logger):
     def is_alive(self):
         return self.isAlive()
 
+    def waitUntilFinish(self):
+        return self.__events.waitStop()
+
     # properties
 
     @property
@@ -294,6 +297,10 @@ class Pool(_Logger):
                 collected += 1
                 self.__collected.append(data)
             self.debug("collect %d outputs" % (collected))
+            if self.logEnable():
+                self.progress
+                self.contributions
+                self.computation
         if len(self.__collected) == self.__inputNelements:
             self.info("All %d inputs processed and collected"
                       % (self.__inputNelements))
