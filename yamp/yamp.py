@@ -297,7 +297,7 @@ class Pool(_Logger):
                 collected += 1
                 self.__collected.append(data)
             self.debug("collect %d outputs" % (collected))
-            if self.logEnable():
+            if self.logEnable:
                 self.progress
                 self.contributions
                 self.computation
